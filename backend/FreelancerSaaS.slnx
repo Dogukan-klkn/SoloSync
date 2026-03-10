@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="FreelancerSaaS.API/FreelancerSaaS.API.csproj" />
+  <Project Path="FreelancerSaaS.Core/FreelancerSaaS.Core.csproj" />
+  <Project Path="FreelancerSaaS.Infrastructure/FreelancerSaaS.Infrastructure.csproj" />
+</Solution>
