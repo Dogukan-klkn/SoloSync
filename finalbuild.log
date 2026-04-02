@@ -1,0 +1,12 @@
+  Determining projects to restore...
+  Restored C:\Users\Dogukan\Desktop\Proje\backend\FreelancerSaaS.API\FreelancerSaaS.API.csproj (in 329 ms).
+  2 of 3 projects are up-to-date for restore.
+  FreelancerSaaS.Core -> C:\Users\Dogukan\Desktop\Proje\backend\FreelancerSaaS.Core\bin\Debug\net10.0\FreelancerSaaS.Core.dll
+  FreelancerSaaS.Infrastructure -> C:\Users\Dogukan\Desktop\Proje\backend\FreelancerSaaS.Infrastructure\bin\Debug\net10.0\FreelancerSaaS.Infrastructure.dll
+  FreelancerSaaS.API -> C:\Users\Dogukan\Desktop\Proje\backend\FreelancerSaaS.API\bin\Debug\net10.0\FreelancerSaaS.API.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:05.55
