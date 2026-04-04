@@ -1,0 +1,47 @@
+[2026-04-04 00:00:00 INF] HTTP POST /api/auth/register responded 200 in 149.5245 ms
+[2026-04-04 00:11:33 INF] HTTP OPTIONS /api/auth/register responded 204 in 1.0855 ms
+[2026-04-04 00:11:33 INF] HTTP POST /api/auth/register responded 200 in 193.4091 ms
+[2026-04-04 09:45:09 INF] HTTP OPTIONS /api/auth/login responded 204 in 2.1475 ms
+[2026-04-04 09:45:11 INF] HTTP POST /api/auth/login responded 200 in 1717.6255 ms
+[2026-04-04 09:45:57 INF] HTTP OPTIONS /api/auth/register responded 204 in 0.3058 ms
+[2026-04-04 09:45:57 INF] HTTP POST /api/auth/register responded 200 in 352.6925 ms
+[2026-04-04 09:48:18 INF] HTTP OPTIONS /api/auth/login responded 204 in 0.0563 ms
+[2026-04-04 09:48:18 INF] HTTP POST /api/auth/login responded 200 in 165.8656 ms
+[2026-04-04 09:49:06 INF] HTTP OPTIONS /api/auth/login responded 204 in 0.0812 ms
+[2026-04-04 09:49:06 ERR] HTTP POST /api/auth/login responded 500 in 6.5895 ms
+System.UnauthorizedAccessException: E-posta veya şifre hatalı.
+   at FreelancerSaaS.Infrastructure.Services.AuthService.LoginAsync(LoginRequest request) in C:\Users\Dogukan\Desktop\Proje\backend\FreelancerSaaS.Infrastructure\Services\AuthService.cs:line 52
+   at FreelancerSaaS.API.Controllers.AuthController.Login(LoginRequest request) in C:\Users\Dogukan\Desktop\Proje\backend\FreelancerSaaS.API\Controllers\AuthController.cs:line 28
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ActionMethodExecutor.TaskOfIActionResultExecutor.Execute(ActionContext actionContext, IActionResultTypeMapper mapper, ObjectMethodExecutor executor, Object controller, Object[] arguments)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeActionMethodAsync>g__Awaited|12_0(ControllerActionInvoker invoker, ValueTask`1 actionResultValueTask)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeNextActionFilterAsync>g__Awaited|10_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Rethrow(ActionExecutedContextSealed context)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeInnerFilterAsync>g__Awaited|13_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeFilterPipelineAsync>g__Awaited|20_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Authentication.AuthenticationMiddleware.Invoke(HttpContext context)
+   at Serilog.AspNetCore.RequestLoggingMiddleware.Invoke(HttpContext httpContext)
+[2026-04-04 09:49:06 ERR] Unhandled exception: E-posta veya şifre hatalı.
+System.UnauthorizedAccessException: E-posta veya şifre hatalı.
+   at FreelancerSaaS.Infrastructure.Services.AuthService.LoginAsync(LoginRequest request) in C:\Users\Dogukan\Desktop\Proje\backend\FreelancerSaaS.Infrastructure\Services\AuthService.cs:line 52
+   at FreelancerSaaS.API.Controllers.AuthController.Login(LoginRequest request) in C:\Users\Dogukan\Desktop\Proje\backend\FreelancerSaaS.API\Controllers\AuthController.cs:line 28
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ActionMethodExecutor.TaskOfIActionResultExecutor.Execute(ActionContext actionContext, IActionResultTypeMapper mapper, ObjectMethodExecutor executor, Object controller, Object[] arguments)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeActionMethodAsync>g__Awaited|12_0(ControllerActionInvoker invoker, ValueTask`1 actionResultValueTask)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeNextActionFilterAsync>g__Awaited|10_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Rethrow(ActionExecutedContextSealed context)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeInnerFilterAsync>g__Awaited|13_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeFilterPipelineAsync>g__Awaited|20_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Authentication.AuthenticationMiddleware.Invoke(HttpContext context)
+   at Serilog.AspNetCore.RequestLoggingMiddleware.Invoke(HttpContext httpContext)
+   at Swashbuckle.AspNetCore.SwaggerUI.SwaggerUIMiddleware.Invoke(HttpContext httpContext)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at FreelancerSaaS.API.Middleware.GlobalExceptionMiddleware.InvokeAsync(HttpContext context) in C:\Users\Dogukan\Desktop\Proje\backend\FreelancerSaaS.API\Middleware\GlobalExceptionMiddleware.cs:line 21
+[2026-04-04 09:49:12 INF] HTTP OPTIONS /api/auth/login responded 204 in 0.0437 ms
+[2026-04-04 09:49:12 INF] HTTP POST /api/auth/login responded 200 in 137.6688 ms

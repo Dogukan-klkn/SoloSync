@@ -1,8 +1,12 @@
 using System.Text;
+using FluentValidation;
+using FluentValidation.AspNetCore;
 using FreelancerSaaS.Core.Interfaces;
 using FreelancerSaaS.Infrastructure.Data;
+using FreelancerSaaS.Infrastructure.Repositories;
 using FreelancerSaaS.Infrastructure.Services;
 using FreelancerSaaS.API.Middleware;
+using FreelancerSaaS.API.Validators;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -26,7 +30,11 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 // ─── Services ─────────────────────────────────────────────
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(opts =>
+        opts.JsonSerializerOptions.PropertyNamingPolicy =
+            System.Text.Json.JsonNamingPolicy.CamelCase
+    );
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -73,6 +81,14 @@ builder.Services.AddCors(options =>
 
 // ─── Dependency Injection ─────────────────────────────────
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
+builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
+builder.Services.AddScoped<ICustomerService, CustomerService>();
+builder.Services.AddScoped<IProjectService, ProjectService>();
+
+// ─── FluentValidation ───────────────────────────────────
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddValidatorsFromAssemblyContaining<CreateCustomerValidator>();
 
 // ─── Build App ────────────────────────────────────────────
 var app = builder.Build();
@@ -85,7 +101,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
 app.UseSerilogRequestLogging();
 app.UseCors("AllowAll");
 app.UseAuthentication();
