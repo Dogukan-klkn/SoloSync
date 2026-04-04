@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("FreelancerSaaS.Core")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+00f551a5457c850936b423c7c65cb92d8ae3aea1")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e0c05d0900dd4f0813d2a17b61fb47f9a9e2e497")]
 [assembly: System.Reflection.AssemblyProductAttribute("FreelancerSaaS.Core")]
 [assembly: System.Reflection.AssemblyTitleAttribute("FreelancerSaaS.Core")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
