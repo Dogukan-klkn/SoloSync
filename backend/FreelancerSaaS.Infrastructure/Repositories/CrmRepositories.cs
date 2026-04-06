@@ -48,4 +48,22 @@ namespace FreelancerSaaS.Infrastructure.Repositories
                 .OrderByDescending(p => p.CreatedAt)
                 .ToListAsync();
     }
+
+    public class ProjectTaskRepository : GenericRepository<ProjectTask>, IProjectTaskRepository
+    {
+        public ProjectTaskRepository(ApplicationDbContext context) : base(context) { }
+
+        public async Task<IEnumerable<ProjectTask>> GetByProjectIdAsync(Guid projectId) =>
+            await _context.ProjectTasks
+                .Include(t => t.Project).ThenInclude(p => p.Customer)
+                .Where(t => t.ProjectId == projectId)
+                .OrderBy(t => t.Status)
+                .ThenBy(t => t.Order)
+                .ToListAsync();
+
+        public async Task<ProjectTask?> GetByIdWithProjectAsync(Guid id) =>
+            await _context.ProjectTasks
+                .Include(t => t.Project).ThenInclude(p => p.Customer)
+                .FirstOrDefaultAsync(t => t.Id == id);
+    }
 }

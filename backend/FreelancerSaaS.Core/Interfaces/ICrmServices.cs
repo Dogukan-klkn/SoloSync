@@ -22,4 +22,14 @@ namespace FreelancerSaaS.Core.Interfaces
         Task<MilestoneResponse> AddMilestoneAsync(CreateMilestoneRequest request, Guid userId);
         Task<MilestoneResponse> ToggleMilestoneAsync(Guid milestoneId, Guid userId);
     }
+
+    public interface IProjectTaskService
+    {
+        Task<IEnumerable<ProjectTaskResponse>> GetTasksByProjectAsync(Guid projectId, Guid userId);
+        Task<ProjectTaskResponse?> GetTaskByIdAsync(Guid id, Guid userId);
+        Task<ProjectTaskResponse> CreateTaskAsync(CreateProjectTaskRequest request, Guid userId);
+        Task<ProjectTaskResponse> UpdateTaskAsync(Guid id, UpdateProjectTaskRequest request, Guid userId);
+        Task DeleteTaskAsync(Guid id, Guid userId);
+        Task<IEnumerable<ProjectTaskResponse>> ReorderTasksAsync(List<ReorderTaskRequest> items, Guid userId);
+    }
 }

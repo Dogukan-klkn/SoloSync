@@ -64,4 +64,45 @@ namespace FreelancerSaaS.API.Validators
                 .MaximumLength(100);
         }
     }
+
+    public class CreateProjectTaskValidator : AbstractValidator<CreateProjectTaskRequest>
+    {
+        public CreateProjectTaskValidator()
+        {
+            RuleFor(x => x.ProjectId)
+                .NotEmpty().WithMessage("Proje seçimi zorunludur.");
+
+            RuleFor(x => x.Title)
+                .NotEmpty().WithMessage("Görev başlığı zorunludur.")
+                .MaximumLength(200);
+
+            RuleFor(x => x.Description)
+                .MaximumLength(1000).When(x => x.Description != null);
+
+            RuleFor(x => x.Status)
+                .InclusiveBetween(1, 4).WithMessage("Geçerli bir durum seçiniz (1-4).");
+
+            RuleFor(x => x.Priority)
+                .InclusiveBetween(1, 4).WithMessage("Geçerli bir öncelik seçiniz (1-4).");
+        }
+    }
+
+    public class UpdateProjectTaskValidator : AbstractValidator<UpdateProjectTaskRequest>
+    {
+        public UpdateProjectTaskValidator()
+        {
+            RuleFor(x => x.Title)
+                .NotEmpty().WithMessage("Görev başlığı zorunludur.")
+                .MaximumLength(200);
+
+            RuleFor(x => x.Description)
+                .MaximumLength(1000).When(x => x.Description != null);
+
+            RuleFor(x => x.Status)
+                .InclusiveBetween(1, 4).WithMessage("Geçerli bir durum seçiniz (1-4).");
+
+            RuleFor(x => x.Priority)
+                .InclusiveBetween(1, 4).WithMessage("Geçerli bir öncelik seçiniz (1-4).");
+        }
+    }
 }

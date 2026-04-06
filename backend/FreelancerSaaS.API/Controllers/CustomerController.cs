@@ -3,6 +3,7 @@ using FreelancerSaaS.Core.DTOs;
 using FreelancerSaaS.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace FreelancerSaaS.API.Controllers
 {
@@ -14,6 +15,7 @@ namespace FreelancerSaaS.API.Controllers
         private readonly ICustomerService _service;
         public CustomerController(ICustomerService service) => _service = service;
 
+        // JWT'den gelen UserId — Veri izolasyonunun temel noktası
         private Guid GetUserId() =>
             Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
@@ -21,6 +23,7 @@ namespace FreelancerSaaS.API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAll([FromQuery] string? search)
         {
+            // Service katmanı SADECE bu userId'ye ait müşterileri döner
             var result = await _service.GetCustomersAsync(GetUserId(), search);
             return Ok(result);
         }
@@ -30,31 +33,48 @@ namespace FreelancerSaaS.API.Controllers
         public async Task<IActionResult> GetById(Guid id)
         {
             var result = await _service.GetCustomerByIdAsync(id, GetUserId());
-            return result is null ? NotFound() : Ok(result);
+            // Service null döndürüyorsa ya kayıt yok ya da başkasına ait → 404
+            return result is null ? NotFound(new { message = "Müşteri bulunamadı veya erişim yetkiniz yok." }) : Ok(result);
         }
 
-        // POST api/customers
+        // POST api/customers — Sadece Freelancer oluşturabilir
         [HttpPost]
+        [Authorize(Policy = "FreelancerOnly")]
         public async Task<IActionResult> Create([FromBody] CreateCustomerRequest request)
         {
+            // FluentValidation başarısız olursa buraya ulaşmadan 400 döner
             var result = await _service.CreateCustomerAsync(request, GetUserId());
             return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
         }
 
-        // PUT api/customers/{id}
+        // PUT api/customers/{id} — Sadece Freelancer güncelleyebilir
         [HttpPut("{id:guid}")]
+        [Authorize(Policy = "FreelancerOnly")]
         public async Task<IActionResult> Update(Guid id, [FromBody] UpdateCustomerRequest request)
         {
             var result = await _service.UpdateCustomerAsync(id, request, GetUserId());
             return Ok(result);
         }
 
-        // DELETE api/customers/{id}
+        // DELETE api/customers/{id} — Sadece Freelancer silebilir
         [HttpDelete("{id:guid}")]
+        [Authorize(Policy = "FreelancerOnly")]
         public async Task<IActionResult> Delete(Guid id)
         {
-            await _service.DeleteCustomerAsync(id, GetUserId());
-            return NoContent();
+            try
+            {
+                await _service.DeleteCustomerAsync(id, GetUserId());
+                return NoContent();
+            }
+            catch (DbUpdateException)
+            {
+                // Restrict constraint — bu müşteriye bağlı aktif projeler var
+                return Conflict(new
+                {
+                    statusCode = 409,
+                    message    = "Bu müşteriye ait projeler mevcut olduğu için silinemez. Önce projeleri silin."
+                });
+            }
         }
     }
 }

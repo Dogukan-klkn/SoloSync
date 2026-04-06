@@ -144,8 +144,9 @@ namespace FreelancerSaaS.Infrastructure.Services
                 Name        = req.Name,
                 Description = req.Description,
                 Status      = (ProjectStatus)req.Status,
-                StartDate   = req.StartDate,
-                EndDate     = req.EndDate,
+                // "YYYY-MM-DD" string → UTC DateTime?
+                StartDate   = ParseDate(req.StartDate),
+                EndDate     = ParseDate(req.EndDate),
                 Budget      = req.Budget,
             };
             await _projectRepo.AddAsync(project);
@@ -164,8 +165,9 @@ namespace FreelancerSaaS.Infrastructure.Services
             project.Name        = req.Name;
             project.Description = req.Description;
             project.Status      = (ProjectStatus)req.Status;
-            project.StartDate   = req.StartDate;
-            project.EndDate     = req.EndDate;
+            // "YYYY-MM-DD" string → UTC DateTime?
+            project.StartDate   = ParseDate(req.StartDate);
+            project.EndDate     = ParseDate(req.EndDate);
             project.Budget      = req.Budget;
             project.UpdatedAt   = DateTime.UtcNow;
 
@@ -202,7 +204,8 @@ namespace FreelancerSaaS.Infrastructure.Services
                 ProjectId   = req.ProjectId,
                 Title       = req.Title,
                 Description = req.Description,
-                DueDate     = req.DueDate,
+                // "YYYY-MM-DD" string → UTC DateTime?
+                DueDate     = ParseDate(req.DueDate),
                 Order       = req.Order,
             };
             await _context.Milestones.AddAsync(milestone);
@@ -221,6 +224,18 @@ namespace FreelancerSaaS.Infrastructure.Services
             milestone.IsCompleted = !milestone.IsCompleted;
             await _context.SaveChangesAsync();
             return MapMilestone(milestone);
+        }
+
+        /// <summary>
+        /// "2026-04-04" gibi date-only string'i UTC DateTime'a çevirir.
+        /// Boş veya geçersiz ise null döner — exception fırlatmaz.
+        /// </summary>
+        private static DateTime? ParseDate(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return null;
+            return DateTime.TryParse(value, out var dt)
+                ? DateTime.SpecifyKind(dt, DateTimeKind.Utc)
+                : null;
         }
 
         private static ProjectResponse MapToResponse(Project p) => new()
@@ -248,6 +263,138 @@ namespace FreelancerSaaS.Infrastructure.Services
             DueDate     = m.DueDate,
             IsCompleted = m.IsCompleted,
             Order       = m.Order,
+        };
+    }
+
+    public class ProjectTaskService : IProjectTaskService
+    {
+        private readonly IProjectTaskRepository _taskRepo;
+        private readonly IProjectRepository     _projectRepo;
+        private readonly ApplicationDbContext    _context;
+
+        public ProjectTaskService(
+            IProjectTaskRepository taskRepo,
+            IProjectRepository projectRepo,
+            ApplicationDbContext context)
+        {
+            _taskRepo    = taskRepo;
+            _projectRepo = projectRepo;
+            _context     = context;
+        }
+
+        public async Task<IEnumerable<ProjectTaskResponse>> GetTasksByProjectAsync(Guid projectId, Guid userId)
+        {
+            var project = await _projectRepo.GetByIdWithMilestonesAsync(projectId)
+                ?? throw new KeyNotFoundException("Proje bulunamadı.");
+            if (project.Customer.UserId != userId) throw new UnauthorizedAccessException();
+
+            var tasks = await _taskRepo.GetByProjectIdAsync(projectId);
+            return tasks.Select(MapToResponse);
+        }
+
+        public async Task<ProjectTaskResponse?> GetTaskByIdAsync(Guid id, Guid userId)
+        {
+            var task = await _taskRepo.GetByIdWithProjectAsync(id);
+            if (task == null || task.Project.Customer.UserId != userId) return null;
+            return MapToResponse(task);
+        }
+
+        public async Task<ProjectTaskResponse> CreateTaskAsync(CreateProjectTaskRequest req, Guid userId)
+        {
+            var project = await _projectRepo.GetByIdWithMilestonesAsync(req.ProjectId)
+                ?? throw new KeyNotFoundException("Proje bulunamadı.");
+            if (project.Customer.UserId != userId) throw new UnauthorizedAccessException();
+
+            var task = new ProjectTask
+            {
+                ProjectId   = req.ProjectId,
+                Title       = req.Title,
+                Description = req.Description,
+                Status      = (ProjectTaskStatus)req.Status,
+                Priority    = (ProjectTaskPriority)req.Priority,
+                DueDate     = ParseDate(req.DueDate),
+                Order       = req.Order,
+            };
+            await _taskRepo.AddAsync(task);
+            await _taskRepo.SaveChangesAsync();
+
+            task.Project = project;
+            return MapToResponse(task);
+        }
+
+        public async Task<ProjectTaskResponse> UpdateTaskAsync(Guid id, UpdateProjectTaskRequest req, Guid userId)
+        {
+            var task = await _taskRepo.GetByIdWithProjectAsync(id)
+                ?? throw new KeyNotFoundException("Görev bulunamadı.");
+            if (task.Project.Customer.UserId != userId) throw new UnauthorizedAccessException();
+
+            task.Title       = req.Title;
+            task.Description = req.Description;
+            task.Status      = (ProjectTaskStatus)req.Status;
+            task.Priority    = (ProjectTaskPriority)req.Priority;
+            task.DueDate     = ParseDate(req.DueDate);
+            task.Order       = req.Order;
+            task.UpdatedAt   = DateTime.UtcNow;
+
+            _taskRepo.Update(task);
+            await _taskRepo.SaveChangesAsync();
+            return MapToResponse(task);
+        }
+
+        public async Task DeleteTaskAsync(Guid id, Guid userId)
+        {
+            var task = await _taskRepo.GetByIdWithProjectAsync(id)
+                ?? throw new KeyNotFoundException("Görev bulunamadı.");
+            if (task.Project.Customer.UserId != userId) throw new UnauthorizedAccessException();
+            _taskRepo.Remove(task);
+            await _taskRepo.SaveChangesAsync();
+        }
+
+        public async Task<IEnumerable<ProjectTaskResponse>> ReorderTasksAsync(List<ReorderTaskRequest> items, Guid userId)
+        {
+            if (items.Count == 0) return [];
+
+            var taskIds = items.Select(i => i.Id).ToList();
+            var tasks = await _context.ProjectTasks
+                .Include(t => t.Project).ThenInclude(p => p.Customer)
+                .Where(t => taskIds.Contains(t.Id))
+                .ToListAsync();
+
+            foreach (var task in tasks)
+            {
+                if (task.Project.Customer.UserId != userId) throw new UnauthorizedAccessException();
+
+                var item = items.First(i => i.Id == task.Id);
+                task.Status    = (ProjectTaskStatus)item.Status;
+                task.Order     = item.Order;
+                task.UpdatedAt = DateTime.UtcNow;
+            }
+
+            await _context.SaveChangesAsync();
+            return tasks.OrderBy(t => t.Status).ThenBy(t => t.Order).Select(MapToResponse);
+        }
+
+        private static DateTime? ParseDate(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return null;
+            return DateTime.TryParse(value, out var dt)
+                ? DateTime.SpecifyKind(dt, DateTimeKind.Utc)
+                : null;
+        }
+
+        private static ProjectTaskResponse MapToResponse(ProjectTask t) => new()
+        {
+            Id            = t.Id,
+            ProjectId     = t.ProjectId,
+            Title         = t.Title,
+            Description   = t.Description,
+            Status        = t.Status.ToString(),
+            StatusValue   = (int)t.Status,
+            Priority      = t.Priority.ToString(),
+            PriorityValue = (int)t.Priority,
+            DueDate       = t.DueDate,
+            Order         = t.Order,
+            CreatedAt     = t.CreatedAt,
         };
     }
 }

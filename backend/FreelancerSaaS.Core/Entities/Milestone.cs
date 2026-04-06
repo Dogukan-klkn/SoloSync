@@ -1,8 +1,7 @@
 namespace FreelancerSaaS.Core.Entities
 {
-    public class Milestone
+    public class Milestone : BaseEntity
     {
-        public Guid Id { get; set; } = Guid.NewGuid();
         public Guid ProjectId { get; set; }                     // FK → Project
         public string Title { get; set; } = string.Empty;
         public string? Description { get; set; }

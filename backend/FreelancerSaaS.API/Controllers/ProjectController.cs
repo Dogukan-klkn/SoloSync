@@ -33,24 +33,27 @@ namespace FreelancerSaaS.API.Controllers
             return result is null ? NotFound() : Ok(result);
         }
 
-        // POST api/projects
+        // POST api/projects — Sadece Freelancer oluşturabilir
         [HttpPost]
+        [Authorize(Policy = "FreelancerOnly")]
         public async Task<IActionResult> Create([FromBody] CreateProjectRequest request)
         {
             var result = await _service.CreateProjectAsync(request, GetUserId());
             return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
         }
 
-        // PUT api/projects/{id}
+        // PUT api/projects/{id} — Sadece Freelancer güncelleyebilir
         [HttpPut("{id:guid}")]
+        [Authorize(Policy = "FreelancerOnly")]
         public async Task<IActionResult> Update(Guid id, [FromBody] UpdateProjectRequest request)
         {
             var result = await _service.UpdateProjectAsync(id, request, GetUserId());
             return Ok(result);
         }
 
-        // DELETE api/projects/{id}
+        // DELETE api/projects/{id} — Sadece Freelancer silebilir
         [HttpDelete("{id:guid}")]
+        [Authorize(Policy = "FreelancerOnly")]
         public async Task<IActionResult> Delete(Guid id)
         {
             await _service.DeleteProjectAsync(id, GetUserId());
@@ -65,16 +68,18 @@ namespace FreelancerSaaS.API.Controllers
             return Ok(result);
         }
 
-        // POST api/projects/milestones
+        // POST api/projects/milestones — Sadece Freelancer ekleyebilir
         [HttpPost("milestones")]
+        [Authorize(Policy = "FreelancerOnly")]
         public async Task<IActionResult> AddMilestone([FromBody] CreateMilestoneRequest request)
         {
             var result = await _service.AddMilestoneAsync(request, GetUserId());
             return Ok(result);
         }
 
-        // PATCH api/projects/milestones/{milestoneId}/toggle
+        // PATCH api/projects/milestones/{milestoneId}/toggle — Sadece Freelancer değiştirebilir
         [HttpPatch("milestones/{milestoneId:guid}/toggle")]
+        [Authorize(Policy = "FreelancerOnly")]
         public async Task<IActionResult> ToggleMilestone(Guid milestoneId)
         {
             var result = await _service.ToggleMilestoneAsync(milestoneId, GetUserId());

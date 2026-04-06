@@ -21,5 +21,6 @@ namespace FreelancerSaaS.Core.Entities
         // Navigation
         public Customer Customer { get; set; } = null!;
         public ICollection<Milestone> Milestones { get; set; } = new List<Milestone>();
+        public ICollection<ProjectTask> Tasks { get; set; } = new List<ProjectTask>();
     }
 }

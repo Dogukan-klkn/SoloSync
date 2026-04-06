@@ -43,8 +43,10 @@ namespace FreelancerSaaS.Core.DTOs
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
         public int Status { get; set; } = 1;
-        public DateTime? StartDate { get; set; }
-        public DateTime? EndDate { get; set; }
+        /// <summary>Frontend'den "YYYY-MM-DD" formatında gelir.</summary>
+        public string? StartDate { get; set; }
+        /// <summary>Frontend'den "YYYY-MM-DD" formatında gelir.</summary>
+        public string? EndDate { get; set; }
         public decimal? Budget { get; set; }
     }
 
@@ -53,8 +55,10 @@ namespace FreelancerSaaS.Core.DTOs
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
         public int Status { get; set; }
-        public DateTime? StartDate { get; set; }
-        public DateTime? EndDate { get; set; }
+        /// <summary>Frontend'den "YYYY-MM-DD" formatında gelir.</summary>
+        public string? StartDate { get; set; }
+        /// <summary>Frontend'den "YYYY-MM-DD" formatında gelir.</summary>
+        public string? EndDate { get; set; }
         public decimal? Budget { get; set; }
     }
 
@@ -81,7 +85,8 @@ namespace FreelancerSaaS.Core.DTOs
         public Guid ProjectId { get; set; }
         public string Title { get; set; } = string.Empty;
         public string? Description { get; set; }
-        public DateTime? DueDate { get; set; }
+        /// <summary>Frontend'den "YYYY-MM-DD" formatında gelir.</summary>
+        public string? DueDate { get; set; }
         public int Order { get; set; }
     }
 
@@ -93,6 +98,52 @@ namespace FreelancerSaaS.Core.DTOs
         public DateTime? DueDate { get; set; }
         public bool IsCompleted { get; set; }
         public int Order { get; set; }
+    }
+
+    // ─── ProjectTask DTOs ──────────────────────────────────────
+    public class CreateProjectTaskRequest
+    {
+        public Guid ProjectId { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public int Status { get; set; } = 1;
+        public int Priority { get; set; } = 2;
+        /// <summary>Frontend'den "YYYY-MM-DD" formatında gelir.</summary>
+        public string? DueDate { get; set; }
+        public int Order { get; set; }
+    }
+
+    public class UpdateProjectTaskRequest
+    {
+        public string Title { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public int Status { get; set; }
+        public int Priority { get; set; }
+        /// <summary>Frontend'den "YYYY-MM-DD" formatında gelir.</summary>
+        public string? DueDate { get; set; }
+        public int Order { get; set; }
+    }
+
+    public class ReorderTaskRequest
+    {
+        public Guid Id { get; set; }
+        public int Status { get; set; }
+        public int Order { get; set; }
+    }
+
+    public class ProjectTaskResponse
+    {
+        public Guid Id { get; set; }
+        public Guid ProjectId { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public int StatusValue { get; set; }
+        public string Priority { get; set; } = string.Empty;
+        public int PriorityValue { get; set; }
+        public DateTime? DueDate { get; set; }
+        public int Order { get; set; }
+        public DateTime CreatedAt { get; set; }
     }
 
     // ─── Pagination ───────────────────────────────────────────

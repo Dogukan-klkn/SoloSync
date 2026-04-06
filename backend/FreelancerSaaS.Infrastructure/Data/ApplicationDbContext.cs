@@ -8,14 +8,24 @@ namespace FreelancerSaaS.Infrastructure.Data
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options) { }
 
-        public DbSet<User>      Users      => Set<User>();
-        public DbSet<Customer>  Customers  => Set<Customer>();
-        public DbSet<Project>   Projects   => Set<Project>();
-        public DbSet<Milestone> Milestones => Set<Milestone>();
+        public DbSet<User>        Users        => Set<User>();
+        public DbSet<Customer>    Customers    => Set<Customer>();
+        public DbSet<Project>     Projects     => Set<Project>();
+        public DbSet<Milestone>   Milestones   => Set<Milestone>();
+        public DbSet<ProjectTask> ProjectTasks => Set<ProjectTask>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            // ─── Global Soft Delete Filter ────────────────────────
+            // BaseEntity'den türeyen tüm entity'lerde IsDeleted == false koşulunu uygula.
+            // Silinen kayıtlar otomatik olarak sorgulardan hariç tutulur.
+            modelBuilder.Entity<User>().HasQueryFilter(e => !e.IsDeleted);
+            modelBuilder.Entity<Customer>().HasQueryFilter(e => !e.IsDeleted);
+            modelBuilder.Entity<Project>().HasQueryFilter(e => !e.IsDeleted);
+            modelBuilder.Entity<Milestone>().HasQueryFilter(e => !e.IsDeleted);
+            modelBuilder.Entity<ProjectTask>().HasQueryFilter(e => !e.IsDeleted);
 
             // ─── User ────────────────────────────────────────────
             modelBuilder.Entity<User>(e =>
@@ -57,11 +67,11 @@ namespace FreelancerSaaS.Infrastructure.Data
                 e.Property(p => p.Budget).HasColumnType("decimal(18,2)");
                 e.Property(p => p.Status).HasConversion<string>();
 
-                // Customer → Project (One-to-Many, Cascade)
+                // Customer → Project (One-to-Many, Restrict — önce projeleri silin)
                 e.HasOne(p => p.Customer)
                  .WithMany(c => c.Projects)
                  .HasForeignKey(p => p.CustomerId)
-                 .OnDelete(DeleteBehavior.Cascade);
+                 .OnDelete(DeleteBehavior.Restrict);
             });
 
             // ─── Milestone ────────────────────────────────────────
@@ -76,6 +86,49 @@ namespace FreelancerSaaS.Infrastructure.Data
                  .HasForeignKey(m => m.ProjectId)
                  .OnDelete(DeleteBehavior.Cascade);
             });
+
+            // ─── ProjectTask ─────────────────────────────────────
+            modelBuilder.Entity<ProjectTask>(e =>
+            {
+                e.HasKey(t => t.Id);
+                e.Property(t => t.Title).IsRequired().HasMaxLength(200);
+                e.Property(t => t.Description).HasMaxLength(1000);
+                e.Property(t => t.Status).HasConversion<string>();
+                e.Property(t => t.Priority).HasConversion<string>();
+
+                // Project → ProjectTask (One-to-Many, Cascade)
+                e.HasOne(t => t.Project)
+                 .WithMany(p => p.Tasks)
+                 .HasForeignKey(t => t.ProjectId)
+                 .OnDelete(DeleteBehavior.Cascade);
+            });
+        }
+
+        // ─── Soft Delete Override ─────────────────────────────────
+        // Remove() çağrıldığında kaydı fiziksel silmek yerine IsDeleted = true yapar.
+        public override int SaveChanges()
+        {
+            ApplySoftDelete();
+            return base.SaveChanges();
+        }
+
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            ApplySoftDelete();
+            return base.SaveChangesAsync(cancellationToken);
+        }
+
+        private void ApplySoftDelete()
+        {
+            foreach (var entry in ChangeTracker.Entries<BaseEntity>())
+            {
+                if (entry.State == EntityState.Deleted)
+                {
+                    entry.State = EntityState.Modified;
+                    entry.Entity.IsDeleted = true;
+                    entry.Entity.UpdatedAt = DateTime.UtcNow;
+                }
+            }
         }
     }
 }

@@ -1,0 +1,21 @@
+# ─── Build Çıktıları ─────────────────────────────────────────
+bin/
+obj/
+
+# ─── Hassas Konfigürasyon ────────────────────────────────────
+# Gerçek DB şifresi ve JWT secret burada — ASLA commit etme!
+**/appsettings.Development.json
+**/appsettings.Production.json
+
+# ─── Log Dosyaları ───────────────────────────────────────────
+logs/
+*.log
+
+# ─── IDE ─────────────────────────────────────────────────────
+.vs/
+*.user
+*.suo
+.vscode/
+
+# ─── Publish ─────────────────────────────────────────────────
+publish/

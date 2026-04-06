@@ -14,4 +14,10 @@ namespace FreelancerSaaS.Core.Interfaces
         Task<Project?> GetByIdWithMilestonesAsync(Guid id);
         Task<IEnumerable<Project>> GetProjectsByUserIdAsync(Guid userId);
     }
+
+    public interface IProjectTaskRepository : IGenericRepository<ProjectTask>
+    {
+        Task<IEnumerable<ProjectTask>> GetByProjectIdAsync(Guid projectId);
+        Task<ProjectTask?> GetByIdWithProjectAsync(Guid id);
+    }
 }
