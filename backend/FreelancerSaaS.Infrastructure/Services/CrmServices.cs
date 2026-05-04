@@ -65,6 +65,7 @@ namespace FreelancerSaaS.Infrastructure.Services
             customer.TaxNumber      = req.TaxNumber;
             customer.BillingAddress = req.BillingAddress;
             customer.IsActive       = req.IsActive;
+            customer.ClientUserId   = req.ClientUserId;
             customer.UpdatedAt      = DateTime.UtcNow;
 
             _repo.Update(customer);
@@ -93,6 +94,7 @@ namespace FreelancerSaaS.Infrastructure.Services
             IsActive       = c.IsActive,
             CreatedAt      = c.CreatedAt,
             ProjectCount   = c.Projects?.Count ?? 0,
+            ClientUserId   = c.ClientUserId,
         };
     }
 
@@ -249,8 +251,7 @@ namespace FreelancerSaaS.Infrastructure.Services
             Budget                  = p.Budget,
             CreatedAt               = p.CreatedAt,
             MilestoneCount          = p.Milestones?.Count ?? 0,
-            // Milestone tamamlanma sayısı artık task-bazlı değil; sadece count tutuyoruz
-            CompletedMilestoneCount = p.Milestones?.Count(m => m.Tasks.Any() && m.Tasks.All(t => t.Status == ProjectTaskStatus.Done)) ?? 0,
+            CompletedMilestoneCount = p.Milestones?.Count(m => m.IsCompleted) ?? 0,
         };
 
         private static MilestoneResponse MapMilestone(Milestone m, int totalTasks, int completedTasks)
@@ -349,6 +350,8 @@ namespace FreelancerSaaS.Infrastructure.Services
             await _taskRepo.SaveChangesAsync();
 
             await SyncTagsAsync(task.Id, req.Tags);
+            if (task.MilestoneId.HasValue)
+                await SyncMilestoneCompletionAsync(task.MilestoneId.Value);
 
             var updated = await _taskRepo.GetByIdWithProjectAsync(task.Id) ?? task;
             return MapToResponse(updated);
@@ -384,7 +387,24 @@ namespace FreelancerSaaS.Infrastructure.Services
             }
 
             await _context.SaveChangesAsync();
+
+            var milestoneIds = tasks.Where(t => t.MilestoneId.HasValue).Select(t => t.MilestoneId!.Value).Distinct();
+            foreach (var mid in milestoneIds)
+                await SyncMilestoneCompletionAsync(mid);
+
             return tasks.OrderBy(t => t.Status).ThenBy(t => t.Order).Select(MapToResponse);
+        }
+
+        private async Task SyncMilestoneCompletionAsync(Guid milestoneId)
+        {
+            var milestone = await _context.Milestones
+                .Include(m => m.Tasks)
+                .FirstOrDefaultAsync(m => m.Id == milestoneId);
+            if (milestone == null) return;
+
+            milestone.IsCompleted = milestone.Tasks.Count > 0
+                && milestone.Tasks.All(t => t.Status == ProjectTaskStatus.Done);
+            await _context.SaveChangesAsync();
         }
 
         private static DateTime? ParseDate(string? value)
@@ -1092,6 +1112,294 @@ namespace FreelancerSaaS.Infrastructure.Services
             ApprovedTaskId  = r.ApprovedTaskId,
             RequestedAt     = r.RequestedAt,
             ReviewedAt      = r.ReviewedAt,
+        };
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // ClientPortalService — müşteri kullanıcısının kendi verisine erişimi
+    // ─────────────────────────────────────────────────────────────────────────
+    public class ClientPortalService : IClientPortalService
+    {
+        private readonly ApplicationDbContext _context;
+        private readonly IInvoiceService _invoiceService;
+        private readonly IClientRequestService _clientRequestService;
+
+        public ClientPortalService(ApplicationDbContext context, IInvoiceService invoiceService, IClientRequestService clientRequestService)
+        {
+            _context = context;
+            _invoiceService = invoiceService;
+            _clientRequestService = clientRequestService;
+        }
+
+        // clientUserId → hangi Customer'a bağlı?
+        private async Task<Customer?> FindCustomerAsync(Guid clientUserId)
+            => await _context.Customers
+                .Include(c => c.User)
+                .Include(c => c.Projects)
+                .FirstOrDefaultAsync(c => c.ClientUserId == clientUserId);
+
+        public async Task<ClientProfileResponse?> GetMyProfileAsync(Guid clientUserId)
+        {
+            var customer = await FindCustomerAsync(clientUserId);
+            if (customer == null) return null;
+            return new ClientProfileResponse
+            {
+                CustomerId      = customer.Id,
+                CompanyName     = customer.CompanyName,
+                ContactName     = customer.ContactName,
+                Email           = customer.Email,
+                Phone           = customer.Phone,
+                BillingAddress  = customer.BillingAddress,
+                FreelancerName  = customer.User != null ? $"{customer.User.FirstName} {customer.User.LastName}" : string.Empty,
+                FreelancerEmail = customer.User?.Email ?? string.Empty,
+            };
+        }
+
+        public async Task<IEnumerable<ProjectResponse>> GetMyProjectsAsync(Guid clientUserId)
+        {
+            var customer = await FindCustomerAsync(clientUserId);
+            if (customer == null) return [];
+
+            var projects = await _context.Projects
+                .Include(p => p.Customer).ThenInclude(c => c.User)
+                .Include(p => p.Milestones).ThenInclude(m => m.Tasks)
+                .Where(p => p.CustomerId == customer.Id)
+                .ToListAsync();
+
+            return projects.Select(MapProject);
+        }
+
+        public async Task<ProjectResponse?> GetMyProjectByIdAsync(Guid projectId, Guid clientUserId)
+        {
+            var customer = await FindCustomerAsync(clientUserId);
+            if (customer == null) return null;
+
+            var project = await _context.Projects
+                .Include(p => p.Customer).ThenInclude(c => c.User)
+                .Include(p => p.Milestones).ThenInclude(m => m.Tasks)
+                .FirstOrDefaultAsync(p => p.Id == projectId && p.CustomerId == customer.Id);
+
+            return project == null ? null : MapProject(project);
+        }
+
+        public async Task<IEnumerable<MilestoneResponse>> GetMyMilestonesAsync(Guid projectId, Guid clientUserId)
+        {
+            var customer = await FindCustomerAsync(clientUserId);
+            if (customer == null) return [];
+
+            var project = await _context.Projects
+                .Include(p => p.Milestones)
+                .FirstOrDefaultAsync(p => p.Id == projectId && p.CustomerId == customer.Id);
+            if (project == null) return [];
+
+            var milestoneTasks = await _context.ProjectTasks
+                .Where(t => t.ProjectId == projectId && t.MilestoneId != null)
+                .Select(t => new { t.MilestoneId, t.Status })
+                .ToListAsync();
+
+            return project.Milestones.OrderBy(m => m.Order).Select(m =>
+            {
+                var tasks = milestoneTasks.Where(t => t.MilestoneId == m.Id).ToList();
+                var total = tasks.Count;
+                var done = tasks.Count(t => t.Status == ProjectTaskStatus.Done);
+                var pct = total > 0 ? (int)Math.Round((double)done / total * 100) : 0;
+                return new MilestoneResponse
+                {
+                    Id                 = m.Id,
+                    Title              = m.Title,
+                    Description        = m.Description,
+                    DueDate            = m.DueDate,
+                    Order              = m.Order,
+                    TotalTasks         = total,
+                    CompletedTasks     = done,
+                    ProgressPercentage = pct,
+                };
+            });
+        }
+
+        public async Task<IEnumerable<ProjectTaskResponse>> GetMyTasksAsync(Guid projectId, Guid clientUserId)
+        {
+            var customer = await FindCustomerAsync(clientUserId);
+            if (customer == null) return [];
+
+            var belongsToCustomer = await _context.Projects
+                .AnyAsync(p => p.Id == projectId && p.CustomerId == customer.Id);
+            if (!belongsToCustomer) return [];
+
+            var tasks = await _context.ProjectTasks
+                .Include(t => t.Tags)
+                .Where(t => t.ProjectId == projectId)
+                .OrderBy(t => t.Status).ThenBy(t => t.Order)
+                .ToListAsync();
+
+            return tasks.Select(t => new ProjectTaskResponse
+            {
+                Id          = t.Id,
+                ProjectId   = t.ProjectId,
+                Title       = t.Title,
+                Description = t.Description,
+                Status      = t.Status.ToString(),
+                StatusValue = (int)t.Status,
+                Priority      = t.Priority.ToString(),
+                PriorityValue = (int)t.Priority,
+                DueDate       = t.DueDate,
+                Order         = t.Order,
+                CreatedAt     = t.CreatedAt,
+                MilestoneId   = t.MilestoneId,
+                Tags          = t.Tags.Select(tag => new TagResponse { Id = tag.Id, Label = tag.Label, Color = tag.Color }).ToList(),
+            });
+        }
+
+        public async Task<IEnumerable<InvoiceResponse>> GetMyInvoicesAsync(Guid clientUserId, string? status = null)
+        {
+            var customer = await FindCustomerAsync(clientUserId);
+            if (customer == null) return [];
+
+            var query = _context.Invoices
+                .Include(i => i.Customer)
+                .Include(i => i.Items)
+                .Include(i => i.Payments)
+                .Where(i => i.CustomerId == customer.Id);
+
+            if (!string.IsNullOrEmpty(status) && Enum.TryParse<InvoiceStatus>(status, true, out var s))
+                query = query.Where(i => i.Status == s);
+
+            var invoices = await query.OrderByDescending(i => i.IssueDate).ToListAsync();
+            return invoices.Select(MapInvoice);
+        }
+
+        public async Task<InvoiceResponse?> GetMyInvoiceByIdAsync(Guid invoiceId, Guid clientUserId)
+        {
+            var customer = await FindCustomerAsync(clientUserId);
+            if (customer == null) return null;
+
+            var invoice = await _context.Invoices
+                .Include(i => i.Customer)
+                .Include(i => i.Items)
+                .Include(i => i.Payments)
+                .FirstOrDefaultAsync(i => i.Id == invoiceId && i.CustomerId == customer.Id);
+
+            return invoice == null ? null : MapInvoice(invoice);
+        }
+
+        public async Task<InvoiceResponse> ClientInvoiceActionAsync(Guid invoiceId, ClientActionRequest request, Guid clientUserId)
+        {
+            var customer = await FindCustomerAsync(clientUserId);
+            if (customer == null) throw new UnauthorizedAccessException("Müşteri kaydı bulunamadı.");
+
+            var invoice = await _context.Invoices
+                .Include(i => i.Customer)
+                .Include(i => i.Items)
+                .Include(i => i.Payments)
+                .FirstOrDefaultAsync(i => i.Id == invoiceId && i.CustomerId == customer.Id)
+                ?? throw new KeyNotFoundException("Fatura bulunamadı.");
+
+            var action = request.Action?.ToLower();
+            if (action == "approve")
+                invoice.Status = InvoiceStatus.ClientApproved;
+            else if (action == "request-revision")
+                invoice.Status = InvoiceStatus.RevisionRequested;
+            else
+                throw new ArgumentException("Geçersiz işlem. 'approve' veya 'request-revision' kullanın.");
+
+            invoice.UpdatedAt = DateTime.UtcNow;
+            _context.Invoices.Update(invoice);
+            await _context.SaveChangesAsync();
+            return MapInvoice(invoice);
+        }
+
+        public async Task<ClientRequestResponse> SendRequestAsync(CreateClientRequestRequest request, Guid clientUserId)
+        {
+            var customer = await FindCustomerAsync(clientUserId);
+            if (customer == null) throw new UnauthorizedAccessException("Müşteri kaydı bulunamadı.");
+
+            // Projenin müşteriye ait olduğunu doğrula
+            var project = await _context.Projects
+                .FirstOrDefaultAsync(p => p.Id == request.ProjectId && p.CustomerId == customer.Id)
+                ?? throw new UnauthorizedAccessException("Bu projeye erişim yetkiniz yok.");
+
+            return await _clientRequestService.CreateAsync(request, clientUserId);
+        }
+
+        public async Task<IEnumerable<ClientRequestResponse>> GetMyRequestsAsync(Guid projectId, Guid clientUserId)
+        {
+            var customer = await FindCustomerAsync(clientUserId);
+            if (customer == null) return [];
+
+            var belongsToCustomer = await _context.Projects
+                .AnyAsync(p => p.Id == projectId && p.CustomerId == customer.Id);
+            if (!belongsToCustomer) return [];
+
+            var requests = await _context.ClientRequests
+                .Include(r => r.Project)
+                .Include(r => r.Customer)
+                .Where(r => r.ProjectId == projectId)
+                .OrderByDescending(r => r.RequestedAt)
+                .ToListAsync();
+
+            return requests.Select(r => new ClientRequestResponse
+            {
+                Id              = r.Id,
+                ProjectId       = r.ProjectId,
+                ProjectName     = r.Project?.Name ?? string.Empty,
+                CustomerId      = r.CustomerId,
+                CustomerName    = r.Customer?.CompanyName ?? string.Empty,
+                OriginalMessage = r.OriginalMessage,
+                SummarizedTodo  = r.SummarizedTodo,
+                Status          = r.Status.ToString(),
+                StatusValue     = (int)r.Status,
+                ApprovedTaskId  = r.ApprovedTaskId,
+                RequestedAt     = r.RequestedAt,
+                ReviewedAt      = r.ReviewedAt,
+            });
+        }
+
+        private static ProjectResponse MapProject(Project p) => new()
+        {
+            Id                      = p.Id,
+            CustomerId              = p.CustomerId,
+            CustomerName            = p.Customer?.CompanyName ?? string.Empty,
+            Name                    = p.Name,
+            Description             = p.Description,
+            Status                  = p.Status.ToString(),
+            StatusValue             = (int)p.Status,
+            StartDate               = p.StartDate,
+            EndDate                 = p.EndDate,
+            Budget                  = p.Budget,
+            CreatedAt               = p.CreatedAt,
+            MilestoneCount          = p.Milestones?.Count ?? 0,
+            CompletedMilestoneCount = p.Milestones?.Count(m => m.IsCompleted) ?? 0,
+        };
+
+        private static InvoiceResponse MapInvoice(Invoice inv) => new()
+        {
+            Id            = inv.Id,
+            CustomerId    = inv.CustomerId,
+            CustomerName  = inv.Customer?.CompanyName ?? string.Empty,
+            InvoiceNumber = inv.InvoiceNumber,
+            IssueDate     = inv.IssueDate,
+            DueDate       = inv.DueDate,
+            TotalAmount   = inv.TotalAmount,
+            Status        = inv.Status.ToString(),
+            StatusValue   = (int)inv.Status,
+            CreatedAt     = inv.CreatedAt,
+            Items = inv.Items?.Select(i => new InvoiceItemResponse
+            {
+                Id          = i.Id,
+                Description = i.Description,
+                Quantity    = i.Quantity,
+                UnitPrice   = i.UnitPrice,
+                Amount      = i.Amount,
+            }).ToList() ?? [],
+            Payments = inv.Payments?.Select(p => new PaymentResponse
+            {
+                Id          = p.Id,
+                Amount      = p.Amount,
+                PaymentDate = p.PaymentDate,
+                Method      = p.Method.ToString(),
+                Notes       = p.Notes,
+                CreatedAt   = p.CreatedAt,
+            }).ToList() ?? [],
         };
     }
 }

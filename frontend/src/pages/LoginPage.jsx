@@ -33,7 +33,8 @@ const LoginPage = () => {
         data.accessToken,
         data.refreshToken
       );
-      navigate('/dashboard');
+      // Client rolü → Client Portal'a yönlendir
+      navigate(data.role === 'Client' ? '/client-portal' : '/dashboard');
     } catch (err) {
       // Ağ hatası
       if (err.message?.includes('Sunucuya')) {

@@ -14,6 +14,7 @@ const schema = z.object({
   taxNumber:      z.string().max(50).optional().or(z.literal('')),
   billingAddress: z.string().max(250).optional().or(z.literal('')),
   isActive:       z.boolean().optional(),
+  clientUserId:   z.string().uuid('Geçersiz UUID formatı').optional().or(z.literal('')).nullable(),
 });
 
 const inputCls = 'w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition';
@@ -42,6 +43,7 @@ export default function CustomerModal({ customer, onClose }) {
       phone:          data.phone || null,
       taxNumber:      data.taxNumber || null,
       billingAddress: data.billingAddress || null,
+      clientUserId:   data.clientUserId || null,
     };
     try {
       if (isEdit) await update.mutateAsync({ id: customer.id, data: payload });
@@ -121,6 +123,19 @@ export default function CustomerModal({ customer, onClose }) {
               <span className="text-sm text-slate-700">Müşteri aktif</span>
             </label>
           )}
+
+          <div>
+            <label className={labelCls}>Müşteri Portal Kullanıcı ID <span className="text-slate-400 font-normal">(Opsiyonel)</span></label>
+            <input
+              {...register('clientUserId')}
+              className={inputCls}
+              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            />
+            <p className="text-xs text-slate-400 mt-1">
+              Müşteri bu UUID ile sisteme kayıtlı bir Client hesabına bağlanır ve kendi portaline erişebilir.
+            </p>
+            {errors.clientUserId && <p className="text-red-500 text-xs mt-1">{errors.clientUserId.message}</p>}
+          </div>
 
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition font-medium text-sm">

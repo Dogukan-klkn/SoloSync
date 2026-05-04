@@ -115,6 +115,7 @@ builder.Services.AddScoped<IClientRequestRepository, ClientRequestRepository>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IClientRequestService, ClientRequestService>();
+builder.Services.AddScoped<IClientPortalService, ClientPortalService>();
 builder.Services.AddHttpClient<IAIService, AIService>();
 
 // ─── FluentValidation ───────────────────────────────────

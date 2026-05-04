@@ -77,6 +77,13 @@ namespace FreelancerSaaS.Infrastructure.Data
                  .WithMany()
                  .HasForeignKey(c => c.UserId)
                  .OnDelete(DeleteBehavior.Restrict);
+
+                // ClientUser → Customer (nullable, SetNull on delete)
+                e.HasOne(c => c.ClientUser)
+                 .WithMany()
+                 .HasForeignKey(c => c.ClientUserId)
+                 .IsRequired(false)
+                 .OnDelete(DeleteBehavior.SetNull);
             });
 
             // ─── Project ──────────────────────────────────────────

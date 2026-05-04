@@ -10,9 +10,11 @@ namespace FreelancerSaaS.Core.Entities
         public string? TaxNumber { get; set; }
         public string? BillingAddress { get; set; }
         public bool IsActive { get; set; } = true;
+        public Guid? ClientUserId { get; set; }                  // Bağlı müşteri kullanıcı hesabı (nullable FK → User)
 
         // Navigation
         public User User { get; set; } = null!;
+        public User? ClientUser { get; set; }
         public ICollection<Project> Projects { get; set; } = new List<Project>();
     }
 }

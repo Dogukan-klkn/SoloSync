@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './store/authStore';
 import ProtectedRoute from './components/ProtectedRoute';
 import DashboardLayout from './layouts/DashboardLayout';
+import ClientPortalLayout from './layouts/ClientPortalLayout';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import HomePage from './pages/HomePage';
@@ -14,6 +15,12 @@ import KanbanBoard from './pages/KanbanBoard';
 import TimeTrackerPage from './pages/TimeTrackerPage';
 import InvoicesPage from './pages/InvoicesPage';
 import InvoiceDetailPage from './pages/InvoiceDetailPage';
+import ClientHomePage from './pages/client-portal/ClientHomePage';
+import ClientProjectsPage from './pages/client-portal/ClientProjectsPage';
+import ClientProjectDetailPage from './pages/client-portal/ClientProjectDetailPage';
+import ClientInvoicesPage from './pages/client-portal/ClientInvoicesPage';
+import ClientInvoiceDetailPage from './pages/client-portal/ClientInvoiceDetailPage';
+import ClientMessagesPage from './pages/client-portal/ClientMessagesPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,6 +52,18 @@ function App() {
                 <Route path="invoices"              element={<InvoicesPage />} />
                 <Route path="invoices/:id"          element={<InvoiceDetailPage />} />
                 <Route path="settings"              element={<DashboardHome />} />
+              </Route>
+            </Route>
+
+            {/* Client Portal — sadece Client rolü */}
+            <Route element={<ProtectedRoute allowedRoles={['Client']} />}>
+              <Route path="/client-portal" element={<ClientPortalLayout />}>
+                <Route index                         element={<ClientHomePage />} />
+                <Route path="projects"               element={<ClientProjectsPage />} />
+                <Route path="projects/:id"           element={<ClientProjectDetailPage />} />
+                <Route path="invoices"               element={<ClientInvoicesPage />} />
+                <Route path="invoices/:id"           element={<ClientInvoiceDetailPage />} />
+                <Route path="messages"               element={<ClientMessagesPage />} />
               </Route>
             </Route>
 

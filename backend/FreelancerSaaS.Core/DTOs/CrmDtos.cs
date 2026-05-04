@@ -20,6 +20,7 @@ namespace FreelancerSaaS.Core.DTOs
         public string? TaxNumber { get; set; }
         public string? BillingAddress { get; set; }
         public bool IsActive { get; set; } = true;
+        public Guid? ClientUserId { get; set; }
     }
 
     public class CustomerResponse
@@ -34,6 +35,20 @@ namespace FreelancerSaaS.Core.DTOs
         public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
         public int ProjectCount { get; set; }
+        public Guid? ClientUserId { get; set; }
+    }
+
+    // Client Portal — müşterinin kendi profilini görmesi için
+    public class ClientProfileResponse
+    {
+        public Guid CustomerId { get; set; }
+        public string CompanyName { get; set; } = string.Empty;
+        public string ContactName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string? Phone { get; set; }
+        public string? BillingAddress { get; set; }
+        public string FreelancerName { get; set; } = string.Empty;
+        public string FreelancerEmail { get; set; } = string.Empty;
     }
 
     // ─── Project DTOs ─────────────────────────────────────────

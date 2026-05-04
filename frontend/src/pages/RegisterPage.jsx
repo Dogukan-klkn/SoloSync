@@ -48,7 +48,7 @@ const RegisterPage = () => {
         data.accessToken,
         data.refreshToken
       );
-      navigate('/dashboard');
+      navigate(data.role === 'Client' ? '/client-portal' : '/dashboard');
     } catch (err) {
       if (err.message?.includes('Sunucuya')) {
         setServerError('Backend\'e bağlanılamıyor. Lütfen serverin çalıştığına emin olun.');

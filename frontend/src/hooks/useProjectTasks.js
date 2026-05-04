@@ -19,6 +19,7 @@ export function useCreateTask(projectId) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [...TASKS_KEY, projectId] });
       qc.invalidateQueries({ queryKey: ['milestones', projectId] });
+      qc.invalidateQueries({ queryKey: ['projects'] });
     },
   });
 }
@@ -30,6 +31,7 @@ export function useUpdateTask(projectId) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [...TASKS_KEY, projectId] });
       qc.invalidateQueries({ queryKey: ['milestones', projectId] });
+      qc.invalidateQueries({ queryKey: ['projects'] });
     },
   });
 }
@@ -38,7 +40,10 @@ export function useDeleteTask(projectId) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id) => taskService.remove(id),
-    onSuccess:  () => qc.invalidateQueries({ queryKey: [...TASKS_KEY, projectId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [...TASKS_KEY, projectId] });
+      qc.invalidateQueries({ queryKey: ['projects'] });
+    },
   });
 }
 
@@ -48,8 +53,8 @@ export function useReorderTasks(projectId) {
     mutationFn: (items) => taskService.reorder(items).then(r => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [...TASKS_KEY, projectId] });
-      // Milestone progress'i anında güncelle
       qc.invalidateQueries({ queryKey: ['milestones', projectId] });
+      qc.invalidateQueries({ queryKey: ['projects'] });
     },
   });
 }

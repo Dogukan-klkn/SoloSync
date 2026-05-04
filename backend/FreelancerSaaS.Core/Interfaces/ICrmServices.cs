@@ -75,4 +75,19 @@ namespace FreelancerSaaS.Core.Interfaces
         Task<ClientRequestResponse> ApproveAsync(Guid requestId, List<TagRequest>? tags, Guid freelancerId);
         Task<ClientRequestResponse> RejectAsync(Guid requestId, Guid freelancerId);
     }
+
+    // Client Portal: müşteri kendi verilerine (proje, fatura, görev, yorum) erişir
+    public interface IClientPortalService
+    {
+        Task<ClientProfileResponse?> GetMyProfileAsync(Guid clientUserId);
+        Task<IEnumerable<ProjectResponse>> GetMyProjectsAsync(Guid clientUserId);
+        Task<ProjectResponse?> GetMyProjectByIdAsync(Guid projectId, Guid clientUserId);
+        Task<IEnumerable<MilestoneResponse>> GetMyMilestonesAsync(Guid projectId, Guid clientUserId);
+        Task<IEnumerable<ProjectTaskResponse>> GetMyTasksAsync(Guid projectId, Guid clientUserId);
+        Task<IEnumerable<InvoiceResponse>> GetMyInvoicesAsync(Guid clientUserId, string? status = null);
+        Task<InvoiceResponse?> GetMyInvoiceByIdAsync(Guid invoiceId, Guid clientUserId);
+        Task<InvoiceResponse> ClientInvoiceActionAsync(Guid invoiceId, ClientActionRequest request, Guid clientUserId);
+        Task<ClientRequestResponse> SendRequestAsync(CreateClientRequestRequest request, Guid clientUserId);
+        Task<IEnumerable<ClientRequestResponse>> GetMyRequestsAsync(Guid projectId, Guid clientUserId);
+    }
 }

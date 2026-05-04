@@ -55,7 +55,10 @@ export function useAddMilestone(projectId) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data) => projectService.addMilestone(data).then(r => r.data),
-    onSuccess:  () => qc.invalidateQueries({ queryKey: ['milestones', projectId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['milestones', projectId] });
+      qc.invalidateQueries({ queryKey: PROJECTS_KEY });
+    },
   });
 }
 

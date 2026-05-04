@@ -8,7 +8,7 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     try {
-      const stored = localStorage.getItem('user');
+      const stored = sessionStorage.getItem('user');
       return stored ? JSON.parse(stored) : null;
     } catch {
       return null;
@@ -16,14 +16,14 @@ export const AuthProvider = ({ children }) => {
   });
 
   const login = useCallback((userData, accessToken, refreshToken) => {
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
-    localStorage.setItem('user', JSON.stringify(userData));
+    sessionStorage.setItem('accessToken', accessToken);
+    sessionStorage.setItem('refreshToken', refreshToken);
+    sessionStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.clear();
+    sessionStorage.clear();
     setUser(null);
   }, []);
 
