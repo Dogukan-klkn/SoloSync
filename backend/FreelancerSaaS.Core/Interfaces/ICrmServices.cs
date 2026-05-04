@@ -2,6 +2,19 @@ using FreelancerSaaS.Core.DTOs;
 
 namespace FreelancerSaaS.Core.Interfaces
 {
+    public interface ITimeEntryService
+    {
+        Task<TimeEntryResponse> StartAsync(StartTimeEntryRequest request, Guid userId);
+        Task<TimeEntryResponse> StopAsync(Guid entryId, StopTimeEntryRequest request, Guid userId);
+        Task<TimeEntryResponse> CreateManualAsync(CreateManualTimeEntryRequest request, Guid userId);
+        Task<TimeEntryResponse> UpdateAsync(Guid id, UpdateTimeEntryRequest request, Guid userId);
+        Task DeleteAsync(Guid id, Guid userId);
+        Task<IEnumerable<TimeEntryResponse>> GetEntriesAsync(Guid userId, Guid? projectTaskId = null, string? from = null, string? to = null);
+        Task<TimeEntryResponse?> GetRunningEntryAsync(Guid userId);
+        Task<TimeSummaryResponse> GetSummaryAsync(Guid userId, string? from = null, string? to = null);
+    }
+
+
     public interface ICustomerService
     {
         Task<IEnumerable<CustomerResponse>> GetCustomersAsync(Guid userId, string? search = null);
@@ -20,7 +33,6 @@ namespace FreelancerSaaS.Core.Interfaces
         Task DeleteProjectAsync(Guid id, Guid userId);
         Task<IEnumerable<MilestoneResponse>> GetMilestonesAsync(Guid projectId, Guid userId);
         Task<MilestoneResponse> AddMilestoneAsync(CreateMilestoneRequest request, Guid userId);
-        Task<MilestoneResponse> ToggleMilestoneAsync(Guid milestoneId, Guid userId);
     }
 
     public interface IProjectTaskService
@@ -31,5 +43,36 @@ namespace FreelancerSaaS.Core.Interfaces
         Task<ProjectTaskResponse> UpdateTaskAsync(Guid id, UpdateProjectTaskRequest request, Guid userId);
         Task DeleteTaskAsync(Guid id, Guid userId);
         Task<IEnumerable<ProjectTaskResponse>> ReorderTasksAsync(List<ReorderTaskRequest> items, Guid userId);
+    }
+
+    public interface IInvoiceService
+    {
+        Task<IEnumerable<InvoiceResponse>> GetInvoicesAsync(Guid userId, string? status = null);
+        Task<InvoiceResponse?> GetByIdAsync(Guid id, Guid userId);
+        Task<InvoiceResponse> CreateAsync(CreateInvoiceRequest request, Guid userId);
+        Task<InvoiceResponse> UpdateAsync(Guid id, UpdateInvoiceRequest request, Guid userId);
+        Task DeleteAsync(Guid id, Guid userId);
+        Task<InvoiceResponse> AddItemAsync(Guid invoiceId, InvoiceItemRequest request, Guid userId);
+        Task<InvoiceResponse> RemoveItemAsync(Guid invoiceId, Guid itemId, Guid userId);
+        Task<InvoiceResponse> AddPaymentAsync(Guid invoiceId, AddPaymentRequest request, Guid userId);
+        Task<InvoiceResponse> SendInvoiceAsync(Guid invoiceId, Guid userId);
+        Task<InvoiceResponse> ClientActionAsync(Guid invoiceId, ClientActionRequest request, Guid requestingUserId, string requestingUserRole);
+    }
+
+    public interface ICommentService
+    {
+        Task<IEnumerable<CommentResponse>> GetByTaskAsync(Guid taskId, Guid requestingUserId);
+        Task<IEnumerable<CommentResponse>> GetByInvoiceAsync(Guid invoiceId, Guid requestingUserId);
+        Task<CommentResponse> CreateAsync(CreateCommentRequest request, Guid userId);
+        Task<CommentResponse> UpdateAsync(Guid id, UpdateCommentRequest request, Guid userId);
+        Task DeleteAsync(Guid id, Guid userId);
+    }
+
+    public interface IClientRequestService
+    {
+        Task<IEnumerable<ClientRequestResponse>> GetByProjectAsync(Guid projectId, Guid userId, string? status = null);
+        Task<ClientRequestResponse> CreateAsync(CreateClientRequestRequest request, Guid userId);
+        Task<ClientRequestResponse> ApproveAsync(Guid requestId, List<TagRequest>? tags, Guid freelancerId);
+        Task<ClientRequestResponse> RejectAsync(Guid requestId, Guid freelancerId);
     }
 }

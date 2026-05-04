@@ -107,6 +107,15 @@ builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<IProjectTaskRepository, ProjectTaskRepository>();
 builder.Services.AddScoped<IProjectTaskService, ProjectTaskService>();
+builder.Services.AddScoped<ITimeEntryRepository, TimeEntryRepository>();
+builder.Services.AddScoped<ITimeEntryService, TimeEntryService>();
+builder.Services.AddScoped<IInvoiceRepository, InvoiceRepository>();
+builder.Services.AddScoped<ICommentRepository, CommentRepository>();
+builder.Services.AddScoped<IClientRequestRepository, ClientRequestRepository>();
+builder.Services.AddScoped<ICommentService, CommentService>();
+builder.Services.AddScoped<IInvoiceService, InvoiceService>();
+builder.Services.AddScoped<IClientRequestService, ClientRequestService>();
+builder.Services.AddHttpClient<IAIService, AIService>();
 
 // ─── FluentValidation ───────────────────────────────────
 builder.Services.AddFluentValidationAutoValidation();

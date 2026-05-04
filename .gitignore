@@ -1,0 +1,33 @@
+# ─── Proje Dokümantasyonu (yerel) ────────────────────────────
+SOLOSYNC_PROJECT_DOCS.md
+
+# ─── Genel ───────────────────────────────────────────────────
+*.log
+*.tmp
+*.cache
+.DS_Store
+Thumbs.db
+
+# ─── IDE / Editor ────────────────────────────────────────────
+.vscode/settings.json
+.vscode/launch.json
+.idea/
+
+# ─── Build çıktıları ────────────────────────────────────────
+dist/
+build/
+
+# ─── Ortam değişkenleri (hassas) ────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ─── Node ────────────────────────────────────────────────────
+node_modules/
+
+# ─── .NET ────────────────────────────────────────────────────
+backend/**/bin/
+backend/**/obj/
+backend/**/*.user
+backend/**/appsettings.Development.json
+backend/**/logs/

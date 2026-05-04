@@ -77,13 +77,5 @@ namespace FreelancerSaaS.API.Controllers
             return Ok(result);
         }
 
-        // PATCH api/projects/milestones/{milestoneId}/toggle — Sadece Freelancer değiştirebilir
-        [HttpPatch("milestones/{milestoneId:guid}/toggle")]
-        [Authorize(Policy = "FreelancerOnly")]
-        public async Task<IActionResult> ToggleMilestone(Guid milestoneId)
-        {
-            var result = await _service.ToggleMilestoneAsync(milestoneId, GetUserId());
-            return Ok(result);
-        }
     }
 }

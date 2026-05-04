@@ -1,12 +1,18 @@
 // src/services/api.js — Mobil Axios Instance (SecureStore ile)
+// ⚠️ IP adresini kendi bilgisayarınızın LAN IP'si ile değiştirin.
+// Bulmak için: Windows → ipconfig | Android Emülatör → 10.0.2.2
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+// Geliştirme ortamı için IP — production'da env variable kullanın
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ??   // Expo managed env (app.config.js'te tanımlayın)
+  'http://192.168.1.100:5024/api';     // ← buraya kendi LAN IP'nizi yazın
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
+  timeout: 10000,
 });
 
 // ─── Request Interceptor ──────────────────────────────────
@@ -38,7 +44,20 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    // Ağ hatası
+    if (!error.response) {
+      return Promise.reject(
+        new Error('Sunucuya bağlanılamıyor. IP adresi ve backend\'in çalıştığını kontrol edin.')
+      );
+    }
+
     if (error.response?.status === 401 && !originalRequest._retry) {
+      if (originalRequest.url?.includes('/auth/refresh-token')) {
+        await SecureStore.deleteItemAsync('accessToken');
+        await SecureStore.deleteItemAsync('refreshToken');
+        return Promise.reject(error);
+      }
+
       if (isRefreshing) {
         return new Promise((resolve, reject) =>
           failedQueue.push({ resolve, reject })
@@ -53,11 +72,13 @@ api.interceptors.response.use(
 
       try {
         const refreshToken = await SecureStore.getItemAsync('refreshToken');
+        if (!refreshToken) throw new Error('No refresh token');
+
         const { data } = await axios.post(`${API_BASE_URL}/auth/refresh-token`, {
           refreshToken,
         });
 
-        await SecureStore.setItemAsync('accessToken', data.accessToken);
+        await SecureStore.setItemAsync('accessToken',  data.accessToken);
         await SecureStore.setItemAsync('refreshToken', data.refreshToken);
 
         processQueue(null, data.accessToken);

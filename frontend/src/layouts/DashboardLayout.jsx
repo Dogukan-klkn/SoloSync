@@ -4,14 +4,16 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../store/authStore';
 import {
   LayoutDashboard, FolderKanban,
-  Users, Settings, Menu, X, LogOut, ChevronRight
+  Users, Settings, Menu, X, LogOut, ChevronRight, Timer, FileText
 } from 'lucide-react';
 
 const NAV_ITEMS = [
-  { to: '/dashboard',          label: 'Dashboard',  icon: LayoutDashboard },
-  { to: '/dashboard/projects', label: 'Projeler',   icon: FolderKanban },
-  { to: '/dashboard/clients',  label: 'Müşteriler', icon: Users },
-  { to: '/dashboard/settings', label: 'Ayarlar',    icon: Settings },
+  { to: '/dashboard',                label: 'Dashboard',     icon: LayoutDashboard },
+  { to: '/dashboard/projects',       label: 'Projeler',      icon: FolderKanban },
+  { to: '/dashboard/clients',        label: 'Müşteriler',    icon: Users, roles: ['Freelancer'] },
+  { to: '/dashboard/time-tracker',   label: 'Zaman Takibi',  icon: Timer, roles: ['Freelancer'] },
+  { to: '/dashboard/invoices',       label: 'Faturalar',     icon: FileText, roles: ['Freelancer'] },
+  { to: '/dashboard/settings',       label: 'Ayarlar',       icon: Settings },
 ];
 
 const DashboardLayout = () => {
@@ -19,6 +21,12 @@ const DashboardLayout = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Client rolü mü? Sadece Freelancer'a açık menü öğeleri filtrele
+  const userRole    = user?.role ?? '';
+  const visibleNavs = NAV_ITEMS.filter(
+    (item) => !item.roles || item.roles.includes(userRole)
+  );
 
   const handleLogout = () => {
     logout();
@@ -47,8 +55,11 @@ const DashboardLayout = () => {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-4 space-y-1 px-2">
-          {NAV_ITEMS.map(({ to, label, icon: Icon }) => {
-            const active = location.pathname === to;
+          {visibleNavs.map(({ to, label, icon: Icon }) => {
+            // Nested route'lar için startsWith kullan
+            const active = to === '/dashboard'
+              ? location.pathname === to
+              : location.pathname.startsWith(to);
             return (
               <Link
                 key={to}

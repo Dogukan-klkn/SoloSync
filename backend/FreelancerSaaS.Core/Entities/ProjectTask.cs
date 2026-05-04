@@ -19,6 +19,7 @@ namespace FreelancerSaaS.Core.Entities
     public class ProjectTask : BaseEntity
     {
         public Guid ProjectId { get; set; }                              // FK → Project
+        public Guid? MilestoneId { get; set; }                           // FK → Milestone (nullable)
         public string Title { get; set; } = string.Empty;
         public string? Description { get; set; }
         public ProjectTaskStatus Status { get; set; } = ProjectTaskStatus.Todo;
@@ -28,5 +29,7 @@ namespace FreelancerSaaS.Core.Entities
 
         // Navigation
         public Project Project { get; set; } = null!;
+        public Milestone? Milestone { get; set; }
+        public ICollection<ProjectTaskTag> Tags { get; set; } = [];
     }
 }

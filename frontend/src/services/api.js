@@ -1,16 +1,18 @@
 // src/services/api.js
-// Axios instance'ı — JWT Bearer token'ı otomatik ekler, 401'de refresh yapar.
+// Axios instance — JWT Bearer token'ı otomatik ekler, 401'de refresh yapar.
 
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// VITE_API_URL tanımlı değilse 5024'e (backend'in gerçek portu) düş
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5024/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
+  timeout: 10000, // 10 saniye timeout
 });
 
-// ─── Request Interceptor: Token ekle ────────────────────────
+// ─── Request Interceptor: Her isteğe Bearer token ekle ────────
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('accessToken');
@@ -22,15 +24,12 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ─── Response Interceptor: 401 → Token yenile ───────────────
+// ─── Response Interceptor: 401 → Refresh token dene ───────────
 let isRefreshing = false;
-let failedQueue = [];
+let failedQueue  = [];
 
 const processQueue = (error, token = null) => {
-  failedQueue.forEach((prom) => {
-    if (error) prom.reject(error);
-    else prom.resolve(token);
-  });
+  failedQueue.forEach((p) => (error ? p.reject(error) : p.resolve(token)));
   failedQueue = [];
 };
 
@@ -39,11 +38,26 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Ağ hatası (backend çalışmıyor vb.)
+    if (!error.response) {
+      return Promise.reject(
+        new Error('Sunucuya bağlanılamıyor. Backend çalışıyor mu?')
+      );
+    }
+
+    // 401 → refresh token ile yenile
+    if (error.response.status === 401 && !originalRequest._retry) {
+      // refresh-token endpoint'i için sonsuz döngüyü önle
+      if (originalRequest.url?.includes('/auth/refresh-token')) {
+        localStorage.clear();
+        window.location.href = '/login';
+        return Promise.reject(error);
+      }
+
       if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
+        return new Promise((resolve, reject) =>
+          failedQueue.push({ resolve, reject })
+        )
           .then((token) => {
             originalRequest.headers.Authorization = `Bearer ${token}`;
             return api(originalRequest);
@@ -56,11 +70,14 @@ api.interceptors.response.use(
 
       try {
         const refreshToken = localStorage.getItem('refreshToken');
-        const { data } = await axios.post(`${API_BASE_URL}/auth/refresh-token`, {
-          refreshToken,
-        });
+        if (!refreshToken) throw new Error('No refresh token');
 
-        localStorage.setItem('accessToken', data.accessToken);
+        const { data } = await axios.post(
+          `${API_BASE_URL}/auth/refresh-token`,
+          { refreshToken }
+        );
+
+        localStorage.setItem('accessToken',  data.accessToken);
         localStorage.setItem('refreshToken', data.refreshToken);
 
         processQueue(null, data.accessToken);

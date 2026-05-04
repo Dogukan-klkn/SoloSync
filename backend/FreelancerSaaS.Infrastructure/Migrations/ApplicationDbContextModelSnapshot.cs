@@ -22,6 +22,101 @@ namespace FreelancerSaaS.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("FreelancerSaaS.Core.Entities.ClientRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ApprovedTaskId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("OriginalMessage")
+                        .IsRequired()
+                        .HasMaxLength(5000)
+                        .HasColumnType("character varying(5000)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SummarizedTodo")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApprovedTaskId");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("ProjectId");
+
+                    b.ToTable("ClientRequests");
+                });
+
+            modelBuilder.Entity("FreelancerSaaS.Core.Entities.Comment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("InvoiceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("ProjectTaskId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvoiceId");
+
+                    b.HasIndex("ProjectTaskId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Comments");
+                });
+
             modelBuilder.Entity("FreelancerSaaS.Core.Entities.Customer", b =>
                 {
                     b.Property<Guid>("Id")
@@ -72,9 +167,102 @@ namespace FreelancerSaaS.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId", "Email")
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = false");
+
+                    b.HasIndex("UserId", "TaxNumber")
+                        .IsUnique()
+                        .HasFilter("\"TaxNumber\" IS NOT NULL AND \"IsDeleted\" = false");
 
                     b.ToTable("Customers");
+                });
+
+            modelBuilder.Entity("FreelancerSaaS.Core.Entities.Invoice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("DueDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("InvoiceNumber")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("IssueDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Invoices");
+                });
+
+            modelBuilder.Entity("FreelancerSaaS.Core.Entities.InvoiceItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("InvoiceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvoiceId");
+
+                    b.ToTable("InvoiceItems");
                 });
 
             modelBuilder.Entity("FreelancerSaaS.Core.Entities.Milestone", b =>
@@ -117,6 +305,45 @@ namespace FreelancerSaaS.Infrastructure.Migrations
                     b.HasIndex("ProjectId");
 
                     b.ToTable("Milestones");
+                });
+
+            modelBuilder.Entity("FreelancerSaaS.Core.Entities.Payment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("InvoiceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("PaymentDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvoiceId");
+
+                    b.ToTable("Payments");
                 });
 
             modelBuilder.Entity("FreelancerSaaS.Core.Entities.Project", b =>
@@ -185,6 +412,9 @@ namespace FreelancerSaaS.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<Guid?>("MilestoneId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("Order")
                         .HasColumnType("integer");
 
@@ -209,9 +439,92 @@ namespace FreelancerSaaS.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("MilestoneId");
+
                     b.HasIndex("ProjectId");
 
                     b.ToTable("ProjectTasks");
+                });
+
+            modelBuilder.Entity("FreelancerSaaS.Core.Entities.ProjectTaskTag", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ProjectTaskId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectTaskId");
+
+                    b.ToTable("ProjectTaskTags");
+                });
+
+            modelBuilder.Entity("FreelancerSaaS.Core.Entities.TimeEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int?>("Duration")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("EndTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("ProjectTaskId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("StartTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectTaskId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("TimeEntries");
                 });
 
             modelBuilder.Entity("FreelancerSaaS.Core.Entities.User", b =>
@@ -268,9 +581,61 @@ namespace FreelancerSaaS.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Email")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = false");
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("FreelancerSaaS.Core.Entities.ClientRequest", b =>
+                {
+                    b.HasOne("FreelancerSaaS.Core.Entities.ProjectTask", "ApprovedTask")
+                        .WithMany()
+                        .HasForeignKey("ApprovedTaskId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("FreelancerSaaS.Core.Entities.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FreelancerSaaS.Core.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ApprovedTask");
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("FreelancerSaaS.Core.Entities.Comment", b =>
+                {
+                    b.HasOne("FreelancerSaaS.Core.Entities.Invoice", "Invoice")
+                        .WithMany("Comments")
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("FreelancerSaaS.Core.Entities.ProjectTask", "ProjectTask")
+                        .WithMany()
+                        .HasForeignKey("ProjectTaskId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("FreelancerSaaS.Core.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Invoice");
+
+                    b.Navigation("ProjectTask");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("FreelancerSaaS.Core.Entities.Customer", b =>
@@ -284,6 +649,36 @@ namespace FreelancerSaaS.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("FreelancerSaaS.Core.Entities.Invoice", b =>
+                {
+                    b.HasOne("FreelancerSaaS.Core.Entities.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FreelancerSaaS.Core.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("FreelancerSaaS.Core.Entities.InvoiceItem", b =>
+                {
+                    b.HasOne("FreelancerSaaS.Core.Entities.Invoice", "Invoice")
+                        .WithMany("Items")
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Invoice");
+                });
+
             modelBuilder.Entity("FreelancerSaaS.Core.Entities.Milestone", b =>
                 {
                     b.HasOne("FreelancerSaaS.Core.Entities.Project", "Project")
@@ -293,6 +688,17 @@ namespace FreelancerSaaS.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("FreelancerSaaS.Core.Entities.Payment", b =>
+                {
+                    b.HasOne("FreelancerSaaS.Core.Entities.Invoice", "Invoice")
+                        .WithMany("Payments")
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Invoice");
                 });
 
             modelBuilder.Entity("FreelancerSaaS.Core.Entities.Project", b =>
@@ -308,13 +714,50 @@ namespace FreelancerSaaS.Infrastructure.Migrations
 
             modelBuilder.Entity("FreelancerSaaS.Core.Entities.ProjectTask", b =>
                 {
+                    b.HasOne("FreelancerSaaS.Core.Entities.Milestone", "Milestone")
+                        .WithMany("Tasks")
+                        .HasForeignKey("MilestoneId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("FreelancerSaaS.Core.Entities.Project", "Project")
                         .WithMany("Tasks")
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("Milestone");
+
                     b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("FreelancerSaaS.Core.Entities.ProjectTaskTag", b =>
+                {
+                    b.HasOne("FreelancerSaaS.Core.Entities.ProjectTask", "ProjectTask")
+                        .WithMany("Tags")
+                        .HasForeignKey("ProjectTaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ProjectTask");
+                });
+
+            modelBuilder.Entity("FreelancerSaaS.Core.Entities.TimeEntry", b =>
+                {
+                    b.HasOne("FreelancerSaaS.Core.Entities.ProjectTask", "ProjectTask")
+                        .WithMany()
+                        .HasForeignKey("ProjectTaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FreelancerSaaS.Core.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ProjectTask");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("FreelancerSaaS.Core.Entities.Customer", b =>
@@ -322,11 +765,30 @@ namespace FreelancerSaaS.Infrastructure.Migrations
                     b.Navigation("Projects");
                 });
 
+            modelBuilder.Entity("FreelancerSaaS.Core.Entities.Invoice", b =>
+                {
+                    b.Navigation("Comments");
+
+                    b.Navigation("Items");
+
+                    b.Navigation("Payments");
+                });
+
+            modelBuilder.Entity("FreelancerSaaS.Core.Entities.Milestone", b =>
+                {
+                    b.Navigation("Tasks");
+                });
+
             modelBuilder.Entity("FreelancerSaaS.Core.Entities.Project", b =>
                 {
                     b.Navigation("Milestones");
 
                     b.Navigation("Tasks");
+                });
+
+            modelBuilder.Entity("FreelancerSaaS.Core.Entities.ProjectTask", b =>
+                {
+                    b.Navigation("Tags");
                 });
 #pragma warning restore 612, 618
         }

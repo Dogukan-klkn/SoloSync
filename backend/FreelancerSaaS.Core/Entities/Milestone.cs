@@ -11,5 +11,6 @@ namespace FreelancerSaaS.Core.Entities
 
         // Navigation
         public Project Project { get; set; } = null!;
+        public ICollection<ProjectTask> Tasks { get; set; } = [];
     }
 }

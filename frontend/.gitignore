@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Ortam değişkenleri — DB şifresi, API key vs. içerebilir
+.env
+.env.local
+.env.*.local
+# NOT: .env.example commit edilebilir (şifresiz örnek)
