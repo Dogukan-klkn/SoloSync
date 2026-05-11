@@ -22,9 +22,15 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    console.log(`[API REQUEST] ${config.method?.toUpperCase()} → ${config.baseURL}${config.url}`);
+    console.log('[API REQUEST] Headers:', JSON.stringify(config.headers));
+    if (config.data) console.log('[API REQUEST] Body:', JSON.stringify(config.data));
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    console.log('[API REQUEST ERROR]', error.message);
+    return Promise.reject(error);
+  }
 );
 
 // ─── Response Interceptor: 401 → Token yenile ────────────
@@ -46,10 +52,24 @@ api.interceptors.response.use(
 
     // Ağ hatası
     if (!error.response) {
+      console.log('=== AĞ HATASI ===');
+      console.log('Hata Tipi:', error.message);
+      console.log('İstek URL:', error.config?.baseURL + error.config?.url);
+      console.log('İstek Metodu:', error.config?.method?.toUpperCase());
+      console.log('İstek Body:', JSON.stringify(error.config?.data));
+      console.log('Ham error.request._response:', error.request?._response);
+      console.log('=== AĞ HATASI BİTİŞ ===');
       return Promise.reject(
         new Error('Sunucuya bağlanılamıyor. IP adresi ve backend\'in çalıştığını kontrol edin.')
       );
     }
+
+    // Backend'den hata yanıtı geldi
+    console.log('=== BACKEND HATA YANITI ===');
+    console.log('Status Kodu:', error.response.status);
+    console.log('URL:', error.config?.baseURL + error.config?.url);
+    console.log('Backend Mesajı:', JSON.stringify(error.response.data));
+    console.log('=== BACKEND HATA YANITI BİTİŞ ===');
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (originalRequest.url?.includes('/auth/refresh-token')) {

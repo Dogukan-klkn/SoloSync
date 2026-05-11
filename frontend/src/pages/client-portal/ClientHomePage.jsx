@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useMyProfile, useMyProjects, useMyInvoices } from '../../hooks/useClientPortal';
 import { useAuth } from '../../store/authStore';
 import {
-  FolderOpen, FileText, CheckCircle2, Clock, AlertTriangle, TrendingUp
+  FolderOpen, FileText, CheckCircle2, Clock, AlertTriangle, TrendingUp, Send, ChevronRight
 } from 'lucide-react';
 
 const statusLabel = {
@@ -30,8 +30,11 @@ const ClientHomePage = () => {
   const activeProjects = projects.filter(p => p.status !== 'Completed');
   const pendingInvoices = invoices.filter(i => i.status === 'Sent' || i.status === 'Overdue');
   const totalBilled = invoices.reduce((s, i) => s + (i.totalAmount ?? 0), 0);
+  const totalPendingRequests = projects.reduce((s, p) => s + (p.pendingRequestCount ?? 0), 0);
   const recentProjects = [...projects].slice(0, 3);
   const recentInvoices = [...invoices].slice(0, 3);
+  // Bekleyen istek olan projeler
+  const projectsWithPending = projects.filter(p => (p.pendingRequestCount ?? 0) > 0);
 
   if (profileLoading) {
     return (
@@ -93,6 +96,29 @@ const ClientHomePage = () => {
           bg="bg-violet-50"
         />
       </div>
+
+      {/* Bekleyen İstekler uyarı bantı */}
+      {totalPendingRequests > 0 && (
+        <Link
+          to="/client-portal/requests"
+          className="flex items-center justify-between gap-4 bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 hover:bg-amber-100 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Send className="w-4 h-4 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-amber-800">
+                {totalPendingRequests} bekleyen istek
+              </p>
+              <p className="text-xs text-amber-600 mt-0.5">
+                Freelancer'ınızın incelemenizi bekleyen istekleriniz var
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="w-5 h-5 text-amber-500 flex-shrink-0" />
+        </Link>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Son projeler */}

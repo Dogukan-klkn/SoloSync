@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../store/authStore';
-import { useMyProfile } from '../hooks/useClientPortal';
+import { useMyProfile, useMyProjects } from '../hooks/useClientPortal';
 import {
   LayoutDashboard, FolderOpen, FileText, MessageSquare,
-  Menu, X, LogOut, ChevronRight, Bell
+  Menu, X, LogOut, ChevronRight, Bell, Send
 } from 'lucide-react';
 
 const NAV_ITEMS = [
   { to: '/client-portal',          label: 'Özet',         icon: LayoutDashboard, exact: true },
   { to: '/client-portal/projects', label: 'Projelerim',   icon: FolderOpen },
   { to: '/client-portal/invoices', label: 'Faturalarım',  icon: FileText },
+  { to: '/client-portal/requests', label: 'İsteklerim',   icon: Send },
   { to: '/client-portal/messages', label: 'Mesajlar',     icon: MessageSquare },
 ];
 
@@ -20,6 +21,12 @@ const ClientPortalLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { data: profile } = useMyProfile();
+  const { data: projects = [] } = useMyProjects();
+
+  // Toplam bekleyen istek sayısı (tüm projeler)
+  const totalPendingRequests = projects.reduce(
+    (sum, p) => sum + (p.pendingRequestCount ?? 0), 0
+  );
 
   const handleLogout = () => {
     logout();
@@ -79,6 +86,7 @@ const ClientPortalLayout = () => {
               : location.pathname.startsWith(to) && to !== '/client-portal';
             const isHome = to === '/client-portal' && location.pathname === '/client-portal';
             const isActive = active || isHome;
+            const isRequests = to === '/client-portal/requests';
 
             return (
               <Link
@@ -91,8 +99,15 @@ const ClientPortalLayout = () => {
                 }`}
               >
                 <Icon className="w-5 h-5 flex-shrink-0" />
-                {sidebarOpen && <span className="text-sm font-medium">{label}</span>}
-                {sidebarOpen && isActive && <ChevronRight className="w-4 h-4 ml-auto" />}
+                {sidebarOpen && <span className="text-sm font-medium flex-1">{label}</span>}
+                {sidebarOpen && isRequests && totalPendingRequests > 0 && (
+                  <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center ${
+                    isActive ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-700'
+                  }`}>
+                    {totalPendingRequests}
+                  </span>
+                )}
+                {sidebarOpen && isActive && !isRequests && <ChevronRight className="w-4 h-4 ml-auto" />}
               </Link>
             );
           })}

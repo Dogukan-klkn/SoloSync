@@ -7,7 +7,7 @@ import {
 import * as SecureStore from 'expo-secure-store';
 import api from '../../services/api';
 
-const LoginScreen = ({ navigation }) => {
+const LoginScreen = ({ navigation, onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -26,14 +26,36 @@ const LoginScreen = ({ navigation }) => {
     setLoading(true);
     try {
       const { data } = await api.post('/auth/login', { email, password });
-      await SecureStore.setItemAsync('accessToken', data.accessToken);
+      await SecureStore.setItemAsync('accessToken',  data.accessToken);
       await SecureStore.setItemAsync('refreshToken', data.refreshToken);
+      await SecureStore.setItemAsync('userRole',     data.role ?? '');
       await SecureStore.setItemAsync('user', JSON.stringify({
         email: data.email, fullName: data.fullName, role: data.role
       }));
-      navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
+      // AppNavigator state'ini callback ile güncelle — navigation.reset() gerekmez
+      onLogin(data.role);
     } catch (err) {
-      Alert.alert('Giriş Başarısız', err.response?.data?.message || 'Bir hata oluştu.');
+      // ── Detaylı Hata Loglama ──────────────────────────────
+      console.log('=== LOGIN HATA BAŞLANGICI ===');
+      if (err.response) {
+        // Backend isteği aldı ve hata kodu döndürdü (400, 401, 500 vb.)
+        console.log('Backend Hata Kodu:', err.response.status);
+        console.log('Backend Mesajı:', JSON.stringify(err.response.data));
+      } else if (err.request) {
+        // İstek gönderildi ama cevap gelmedi (Network Error, CORS, port kapalı vb.)
+        console.log('Cevap alınamadı — büyük ihtimalle Network Error veya CORS');
+        console.log('error.request._response:', err.request?._response);
+        console.log('error.message:', err.message);
+      } else {
+        // İstek oluşturulurken hata
+        console.log('İstek Kurulum Hatası:', err.message);
+      }
+      console.log('=== LOGIN HATA BİTİŞİ ===');
+
+      Alert.alert(
+        'Giriş Başarısız',
+        err.response?.data?.message || err.message || 'Bir hata oluştu.'
+      );
     } finally {
       setLoading(false);
     }

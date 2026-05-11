@@ -1,14 +1,14 @@
 // src/screens/main/SettingsScreen.js
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, DeviceEventEmitter } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
 const SettingsScreen = ({ navigation }) => {
-  const handleLogout = async () => {
-    await SecureStore.deleteItemAsync('accessToken');
-    await SecureStore.deleteItemAsync('refreshToken');
-    await SecureStore.deleteItemAsync('user');
-    navigation.reset({ index: 0, routes: [{ name: 'Auth' }] });
+  const handleLogout = () => {
+    Alert.alert('Çıkış', 'Hesabınızdan çıkış yapmak istediğinize emin misiniz?', [
+      { text: 'İptal', style: 'cancel' },
+      { text: 'Çıkış Yap', style: 'destructive', onPress: () => DeviceEventEmitter.emit('logout') },
+    ]);
   };
 
   return (

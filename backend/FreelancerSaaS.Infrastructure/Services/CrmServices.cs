@@ -1166,7 +1166,19 @@ namespace FreelancerSaaS.Infrastructure.Services
                 .Where(p => p.CustomerId == customer.Id)
                 .ToListAsync();
 
-            return projects.Select(MapProject);
+            // Bekleyen istekleri tek sorguda al
+            var projectIds = projects.Select(p => p.Id).ToList();
+            var pendingCounts = await _context.ClientRequests
+                .Where(r => projectIds.Contains(r.ProjectId) && r.Status == ClientRequestStatus.Pending)
+                .GroupBy(r => r.ProjectId)
+                .Select(g => new { ProjectId = g.Key, Count = g.Count() })
+                .ToListAsync();
+
+            return projects.Select(p =>
+            {
+                var pending = pendingCounts.FirstOrDefault(c => c.ProjectId == p.Id)?.Count ?? 0;
+                return MapProjectWithPending(p, pending);
+            });
         }
 
         public async Task<ProjectResponse?> GetMyProjectByIdAsync(Guid projectId, Guid clientUserId)
@@ -1354,7 +1366,9 @@ namespace FreelancerSaaS.Infrastructure.Services
             });
         }
 
-        private static ProjectResponse MapProject(Project p) => new()
+        private static ProjectResponse MapProject(Project p) => MapProjectWithPending(p, 0);
+
+        private static ProjectResponse MapProjectWithPending(Project p, int pendingRequestCount) => new()
         {
             Id                      = p.Id,
             CustomerId              = p.CustomerId,
@@ -1369,6 +1383,7 @@ namespace FreelancerSaaS.Infrastructure.Services
             CreatedAt               = p.CreatedAt,
             MilestoneCount          = p.Milestones?.Count ?? 0,
             CompletedMilestoneCount = p.Milestones?.Count(m => m.IsCompleted) ?? 0,
+            PendingRequestCount     = pendingRequestCount,
         };
 
         private static InvoiceResponse MapInvoice(Invoice inv) => new()

@@ -92,6 +92,8 @@ namespace FreelancerSaaS.Core.DTOs
         public DateTime CreatedAt { get; set; }
         public int MilestoneCount { get; set; }
         public int CompletedMilestoneCount { get; set; }
+        /// <summary>Yalnızca Client Portal yanıtlarında doldurulur; Freelancer sorgularında 0 döner.</summary>
+        public int PendingRequestCount { get; set; }
     }
 
     // ─── Milestone DTOs ───────────────────────────────────────
