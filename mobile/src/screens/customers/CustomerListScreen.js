@@ -26,7 +26,7 @@ export default function CustomerListScreen({ navigation }) {
   const renderItem = ({ item }) => (
     <TouchableOpacity
       style={styles.card}
-      onPress={() => navigation.navigate('CustomerDetail', { customer: item })}
+      onPress={() => navigation.navigate('CustomerDetail', { customerId: item.id, customer: item })}
     >
       <View style={styles.avatar}>
         <Text style={styles.avatarText}>{item.companyName[0]}</Text>

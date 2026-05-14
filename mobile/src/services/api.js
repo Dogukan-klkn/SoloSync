@@ -3,6 +3,7 @@
 // Bulmak için: Windows → ipconfig | Android Emülatör → 10.0.2.2
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import { DeviceEventEmitter } from 'react-native';
 
 // Geliştirme ortamı için IP — production'da env variable kullanın
 const API_BASE_URL =
@@ -106,8 +107,13 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
+        // Tüm token'ları temizle ve kullanıcıyı login'e yönlendir
+        // Bu olmadan uygulama her API çağrısında çöküyor
         await SecureStore.deleteItemAsync('accessToken');
         await SecureStore.deleteItemAsync('refreshToken');
+        await SecureStore.deleteItemAsync('user');
+        await SecureStore.deleteItemAsync('userRole');
+        DeviceEventEmitter.emit('logout');
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
