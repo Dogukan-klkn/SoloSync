@@ -4,6 +4,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TouchableOpacity, Text, DeviceEventEmitter, Alert } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const handleLogout = () => {
   Alert.alert('Çıkış', 'Hesabınızdan çıkış yapmak istediğinize emin misiniz?', [
@@ -74,6 +75,9 @@ function ClientInvoiceStack() {
 }
 
 export default function ClientTabNavigator() {
+  const insets = useSafeAreaInsets();
+  const bottomPad = Math.max(insets.bottom, 14);
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -81,9 +85,14 @@ export default function ClientTabNavigator() {
         tabBarStyle: {
           backgroundColor: '#2e1065',        // violet-950
           borderTopColor:  'rgba(167,139,250,0.2)',
+          minHeight: 52 + bottomPad,
+          height: 52 + bottomPad,
+          paddingBottom: bottomPad,
+          paddingTop: 6,
         },
         tabBarActiveTintColor:   '#a78bfa',  // violet-400
         tabBarInactiveTintColor: '#6b7280',
+        tabBarLabelStyle:        { fontSize: 11, fontWeight: '600' },
       }}
     >
       <Tab.Screen
