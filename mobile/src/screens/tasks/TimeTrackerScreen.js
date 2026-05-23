@@ -35,6 +35,8 @@ function todayRange() {
   return { from: from.toISOString(), to: to.toISOString() };
 }
 
+const PROJECT_COLORS = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#84cc16'];
+
 // ─── Bileşen ─────────────────────────────────────────────────
 export default function TimeTrackerScreen() {
   const [projects, setProjects]           = useState([]);
@@ -43,6 +45,8 @@ export default function TimeTrackerScreen() {
   const [running, setRunning]             = useState(null);
   const [todaySummary, setTodaySummary]   = useState(null);
   const [elapsed, setElapsed]             = useState(0);
+  const [activeTab, setActiveTab]         = useState('entries');
+  const [expanded, setExpanded]           = useState({});
 
   const [selectedProject, setSelectedProject] = useState('');
   const [selectedTask, setSelectedTask]       = useState('');
@@ -137,6 +141,33 @@ export default function TimeTrackerScreen() {
     ]);
   };
 
+  // ── Gruplama ──
+  const groupedEntries = React.useMemo(() => {
+    const map = {};
+    entries.forEach(e => {
+      const pid = e.projectId || 'unknown';
+      if (!map[pid]) map[pid] = { projectId: pid, projectName: e.projectName || 'Bilinmiyor', entries: [] };
+      map[pid].entries.push(e);
+    });
+    return Object.values(map);
+  }, [entries]);
+
+  const projectStats = React.useMemo(() => {
+    const map = {};
+    entries.filter(e => !e.isRunning).forEach(e => {
+      const pid = e.projectId || 'unknown';
+      if (!map[pid]) map[pid] = { projectId: pid, projectName: e.projectName || 'Bilinmiyor', totalSeconds: 0, tasks: {} };
+      map[pid].totalSeconds += e.duration || 0;
+      const tid = e.taskId || e.id;
+      const tName = e.taskTitle || 'Görev';
+      if (!map[pid].tasks[tid]) map[pid].tasks[tid] = { id: tid, name: tName, seconds: 0 };
+      map[pid].tasks[tid].seconds += e.duration || 0;
+    });
+    return Object.values(map).sort((a, b) => b.totalSeconds - a.totalSeconds);
+  }, [entries]);
+
+  const totalAnalyticsSeconds = projectStats.reduce((s, p) => s + p.totalSeconds, 0);
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Kronometre Kartı */}
@@ -215,38 +246,137 @@ export default function TimeTrackerScreen() {
         </Text>
       </View>
 
-      {/* Kayıt Listesi */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Son Kayıtlar</Text>
-        {entries.length === 0 ? (
-          <Text style={styles.empty}>Henüz kayıt yok.</Text>
-        ) : (
-          entries.slice(0, 20).map(entry => (
-            <View key={entry.id} style={styles.entryRow}>
-              <View style={styles.entryInfo}>
-                <Text style={styles.entryTask} numberOfLines={1}>{entry.taskTitle}</Text>
-                <Text style={styles.entryMeta}>{entry.projectName}</Text>
-                {entry.description ? (
-                  <Text style={styles.entryDesc} numberOfLines={1}>{entry.description}</Text>
-                ) : null}
-                <Text style={styles.entryDate}>{formatDate(entry.startTime)}</Text>
-              </View>
-              <View style={styles.entryRight}>
-                {entry.isRunning ? (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>Çalışıyor</Text>
-                  </View>
-                ) : (
-                  <Text style={styles.entryDuration}>{formatDuration(entry.duration)}</Text>
-                )}
-                <TouchableOpacity onPress={() => handleDelete(entry.id)} style={styles.deleteBtn}>
-                  <Text style={styles.deleteText}>Sil</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))
-        )}
+      {/* Sekmeler */}
+      <View style={styles.tabBar}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'entries' && styles.tabActive]}
+          onPress={() => setActiveTab('entries')}>
+          <Text style={[styles.tabText, activeTab === 'entries' && styles.tabTextActive]}>Kayıtlar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'analytics' && styles.tabActive]}
+          onPress={() => setActiveTab('analytics')}>
+          <Text style={[styles.tabText, activeTab === 'analytics' && styles.tabTextActive]}>Analiz</Text>
+        </TouchableOpacity>
       </View>
+
+      {/* ── Kayıtlar Sekmesi ── */}
+      {activeTab === 'entries' && (
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>Kayıtlar (Proje Bazı)</Text>
+            <Text style={styles.cardSub}>{entries.length} kayıt</Text>
+          </View>
+          {entries.length === 0 ? (
+            <Text style={styles.empty}>Henüz kayıt yok.</Text>
+          ) : (
+            groupedEntries.map((group, gi) => (
+              <View key={group.projectId}>
+                <TouchableOpacity
+                  style={styles.groupHeader}
+                  onPress={() => setExpanded(prev => ({ ...prev, [group.projectId]: !prev[group.projectId] }))}>
+                  <View style={styles.groupHeaderLeft}>
+                    <View style={[styles.groupDot, { backgroundColor: PROJECT_COLORS[gi % PROJECT_COLORS.length] }]} />
+                    <Text style={styles.groupName}>{group.projectName}</Text>
+                    <View style={styles.groupCount}>
+                      <Text style={styles.groupCountText}>{group.entries.length}</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.chevron}>{expanded[group.projectId] === false ? '▼' : '▲'}</Text>
+                </TouchableOpacity>
+
+                {expanded[group.projectId] !== false && group.entries.map(entry => (
+                  <View key={entry.id} style={styles.entryRow}>
+                    <View style={styles.entryInfo}>
+                      <Text style={styles.entryTask} numberOfLines={1}>{entry.taskTitle}</Text>
+                      {entry.description ? <Text style={styles.entryDesc} numberOfLines={1}>{entry.description}</Text> : null}
+                      <Text style={styles.entryDate}>{formatDate(entry.startTime)}</Text>
+                    </View>
+                    <View style={styles.entryRight}>
+                      {entry.isRunning ? (
+                        <View style={styles.badge}><Text style={styles.badgeText}>Çalışıyor</Text></View>
+                      ) : (
+                        <Text style={styles.entryDuration}>{formatDuration(entry.duration)}</Text>
+                      )}
+                      <TouchableOpacity onPress={() => handleDelete(entry.id)} style={styles.deleteBtn}>
+                        <Text style={styles.deleteText}>Sil</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ))
+          )}
+        </View>
+      )}
+
+      {/* ── Analiz Sekmesi ── */}
+      {activeTab === 'analytics' && (
+        <>
+          {/* Çubuk grafik */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Projeye Göre Süre</Text>
+            {projectStats.length === 0 ? (
+              <Text style={styles.empty}>Analiz için yeterli kayıt yok.</Text>
+            ) : (
+              <>
+                {projectStats.map((p, i) => {
+                  const pct   = totalAnalyticsSeconds > 0 ? p.totalSeconds / totalAnalyticsSeconds : 0;
+                  const color = PROJECT_COLORS[i % PROJECT_COLORS.length];
+                  const pPct  = Math.round(pct * 100);
+                  return (
+                    <View key={p.projectId} style={styles.analyticsRow}>
+                      <View style={styles.analyticsHeader}>
+                        <View style={styles.groupHeaderLeft}>
+                          <View style={[styles.groupDot, { backgroundColor: color }]} />
+                          <Text style={styles.analyticsName} numberOfLines={1}>{p.projectName}</Text>
+                        </View>
+                        <View style={styles.analyticsRight}>
+                          <Text style={styles.analyticsDuration}>{formatDuration(p.totalSeconds)}</Text>
+                          <Text style={styles.analyticsPct}>{pPct}%</Text>
+                        </View>
+                      </View>
+                      <View style={styles.analyticsBar}>
+                        <View style={[styles.analyticsBarFill, { width: `${pPct}%`, backgroundColor: color }]} />
+                      </View>
+                    </View>
+                  );
+                })}
+                <View style={styles.analyticsTotalRow}>
+                  <Text style={styles.analyticsTotalLabel}>Toplam</Text>
+                  <Text style={styles.analyticsTotalValue}>{formatDuration(totalAnalyticsSeconds)}</Text>
+                </View>
+              </>
+            )}
+          </View>
+
+          {/* Detay tablosu */}
+          {projectStats.length > 0 && (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Görev Bazı Detay</Text>
+              {projectStats.map((p, i) => {
+                const color    = PROJECT_COLORS[i % PROJECT_COLORS.length];
+                const taskList = Object.values(p.tasks).sort((a, b) => b.seconds - a.seconds);
+                return (
+                  <View key={p.projectId} style={styles.tableSection}>
+                    <View style={styles.tableProjRow}>
+                      <View style={[styles.groupDot, { backgroundColor: color }]} />
+                      <Text style={styles.tableProjName}>{p.projectName}</Text>
+                      <Text style={styles.tableProjDur}>{formatDuration(p.totalSeconds)}</Text>
+                    </View>
+                    {taskList.map((t, ti) => (
+                      <View key={`${p.projectId}_${t.id}_${ti}`} style={styles.tableTaskRow}>
+                        <Text style={styles.tableTaskName} numberOfLines={1}>  {t.name}</Text>
+                        <Text style={styles.tableTaskDur}>{formatDuration(t.seconds)}</Text>
+                      </View>
+                    ))}
+                  </View>
+                );
+              })}
+            </View>
+          )}
+        </>
+      )}
     </ScrollView>
   );
 }
@@ -279,18 +409,59 @@ const styles = StyleSheet.create({
   // Özet
   summaryTime:   { fontSize: 36, fontFamily: 'monospace', fontWeight: 'bold', color: '#1e293b' },
 
+  // Tabs
+  tabBar:        { flexDirection: 'row', backgroundColor: '#f1f5f9', borderRadius: 12, padding: 4, marginBottom: 12 },
+  tab:           { flex: 1, paddingVertical: 9, alignItems: 'center', borderRadius: 10 },
+  tabActive:     { backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
+  tabText:       { fontSize: 13, fontWeight: '600', color: '#94a3b8' },
+  tabTextActive: { color: '#7c3aed' },
+
+  // Card header
+  cardHeader:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  cardSub:       { fontSize: 12, color: '#94a3b8' },
+
+  // Grouped entries
+  groupHeader:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
+  groupHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  groupDot:        { width: 10, height: 10, borderRadius: 5 },
+  groupName:       { fontSize: 14, fontWeight: '700', color: '#1e293b' },
+  groupCount:      { backgroundColor: '#e2e8f0', borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2 },
+  groupCountText:  { fontSize: 11, color: '#64748b', fontWeight: '600' },
+  chevron:         { fontSize: 10, color: '#94a3b8' },
+
   // Kayıt listesi
   empty:         { fontSize: 14, color: '#94a3b8', textAlign: 'center', paddingVertical: 12 },
-  entryRow:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
+  entryRow:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingVertical: 10, paddingLeft: 18, borderTopWidth: 1, borderTopColor: '#f8fafc' },
   entryInfo:     { flex: 1, marginRight: 12 },
-  entryTask:     { fontSize: 14, fontWeight: '600', color: '#1e293b' },
-  entryMeta:     { fontSize: 12, color: '#64748b', marginTop: 2 },
+  entryTask:     { fontSize: 13, fontWeight: '600', color: '#1e293b' },
   entryDesc:     { fontSize: 12, color: '#94a3b8', marginTop: 1 },
   entryDate:     { fontSize: 11, color: '#cbd5e1', marginTop: 2 },
   entryRight:    { alignItems: 'flex-end', gap: 6 },
-  entryDuration: { fontFamily: 'monospace', fontSize: 14, fontWeight: '600', color: '#1e293b' },
+  entryDuration: { fontFamily: 'monospace', fontSize: 13, fontWeight: '600', color: '#1e293b' },
   badge:         { backgroundColor: '#dcfce7', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 },
   badgeText:     { fontSize: 11, color: '#16a34a', fontWeight: '600' },
   deleteBtn:     { paddingTop: 2 },
   deleteText:    { fontSize: 12, color: '#ef4444' },
+
+  // Analytics
+  analyticsRow:      { marginBottom: 12 },
+  analyticsHeader:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  analyticsName:     { fontSize: 13, fontWeight: '600', color: '#1e293b', flex: 1, marginLeft: 8 },
+  analyticsRight:    { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  analyticsDuration: { fontFamily: 'monospace', fontSize: 13, fontWeight: '700', color: '#1e293b' },
+  analyticsPct:      { fontSize: 12, color: '#94a3b8', minWidth: 32, textAlign: 'right' },
+  analyticsBar:      { height: 8, backgroundColor: '#e2e8f0', borderRadius: 4, overflow: 'hidden' },
+  analyticsBarFill:  { height: '100%', borderRadius: 4 },
+  analyticsTotalRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
+  analyticsTotalLabel:{ fontSize: 13, fontWeight: '700', color: '#475569' },
+  analyticsTotalValue:{ fontFamily: 'monospace', fontSize: 14, fontWeight: '800', color: '#1e293b' },
+
+  // Detail table
+  tableSection:  { marginBottom: 10, borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 8 },
+  tableProjRow:  { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+  tableProjName: { flex: 1, fontSize: 13, fontWeight: '700', color: '#1e293b' },
+  tableProjDur:  { fontFamily: 'monospace', fontSize: 13, fontWeight: '700', color: '#1e293b' },
+  tableTaskRow:  { flexDirection: 'row', alignItems: 'center', paddingVertical: 3 },
+  tableTaskName: { flex: 1, fontSize: 12, color: '#64748b' },
+  tableTaskDur:  { fontFamily: 'monospace', fontSize: 12, color: '#64748b' },
 });

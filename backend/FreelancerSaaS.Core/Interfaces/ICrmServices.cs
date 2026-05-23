@@ -33,6 +33,7 @@ namespace FreelancerSaaS.Core.Interfaces
         Task DeleteProjectAsync(Guid id, Guid userId);
         Task<IEnumerable<MilestoneResponse>> GetMilestonesAsync(Guid projectId, Guid userId);
         Task<MilestoneResponse> AddMilestoneAsync(CreateMilestoneRequest request, Guid userId);
+        Task<IEnumerable<DashboardTaskResponse>> GetDashboardTasksAsync(Guid userId);
     }
 
     public interface IProjectTaskService

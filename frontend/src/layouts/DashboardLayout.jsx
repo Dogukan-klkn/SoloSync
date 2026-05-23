@@ -4,7 +4,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../store/authStore';
 import {
   LayoutDashboard, FolderKanban,
-  Users, Settings, Menu, X, LogOut, ChevronRight, Timer, FileText
+  Users, Settings, Menu, X, LogOut, ChevronRight, Timer, FileText, Send
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { to: '/dashboard/clients',        label: 'Müşteriler',    icon: Users, roles: ['Freelancer'] },
   { to: '/dashboard/time-tracker',   label: 'Zaman Takibi',  icon: Timer, roles: ['Freelancer'] },
   { to: '/dashboard/invoices',       label: 'Faturalar',     icon: FileText, roles: ['Freelancer'] },
+  { to: '/dashboard/requests',       label: 'İstekler',       icon: Send, roles: ['Freelancer'] },
   { to: '/dashboard/settings',       label: 'Ayarlar',       icon: Settings },
 ];
 

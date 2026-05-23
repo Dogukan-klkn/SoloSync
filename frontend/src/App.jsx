@@ -15,6 +15,7 @@ import KanbanBoard from './pages/KanbanBoard';
 import TimeTrackerPage from './pages/TimeTrackerPage';
 import InvoicesPage from './pages/InvoicesPage';
 import InvoiceDetailPage from './pages/InvoiceDetailPage';
+import RequestsPage from './pages/RequestsPage';
 import ClientHomePage from './pages/client-portal/ClientHomePage';
 import ClientProjectsPage from './pages/client-portal/ClientProjectsPage';
 import ClientProjectDetailPage from './pages/client-portal/ClientProjectDetailPage';
@@ -51,6 +52,7 @@ function App() {
                 <Route path="time-tracker"          element={<TimeTrackerPage />} />
                 <Route path="invoices"              element={<InvoicesPage />} />
                 <Route path="invoices/:id"          element={<InvoiceDetailPage />} />
+                <Route path="requests"              element={<RequestsPage />} />
                 <Route path="settings"              element={<DashboardHome />} />
               </Route>
             </Route>

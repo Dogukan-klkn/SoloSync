@@ -5,6 +5,8 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { invoiceApi } from '../../services/invoiceApi';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 
 const STATUS = {
   Draft:             { label: 'Taslak',           color: '#64748b', bg: '#f8fafc' },
@@ -174,6 +176,72 @@ export default function InvoiceDetailScreen({ route, navigation }) {
     }
   };
 
+  const handleExportPDF = async () => {
+    if (!invoice) return;
+    const items = (invoice.items || []).map(item => `
+      <tr>
+        <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9">${item.description}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:center">${item.quantity}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right">₺${Number(item.unitPrice).toLocaleString('tr-TR')}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right;font-weight:600">₺${Number(item.amount).toLocaleString('tr-TR')}</td>
+      </tr>`).join('');
+    const payments = (invoice.payments || []).map(p => `
+      <tr>
+        <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;font-weight:600;color:#059669">₺${Number(p.amount).toLocaleString('tr-TR')}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9">${formatDate(p.paymentDate)}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9">${p.notes || '-'}</td>
+      </tr>`).join('');
+    const st = STATUS[invoice.status] ?? STATUS.Draft;
+    const html = `
+      <!DOCTYPE html><html><head><meta charset="utf-8">
+      <style>
+        body { font-family: Helvetica, Arial, sans-serif; margin:0; padding:0; background:#fff; color:#0f172a; }
+        .header { background:#4f46e5; padding:24px 32px; }
+        .header h1 { color:#fff; font-size:26px; margin:0 0 4px 0; }
+        .header p  { color:#c7d2fe; font-size:13px; margin:0; }
+        .body { padding:28px 32px; }
+        .meta { display:flex; justify-content:space-between; margin-bottom:24px; flex-wrap:wrap; gap:12px; }
+        .meta-item label { font-size:11px; color:#94a3b8; font-weight:700; text-transform:uppercase; display:block; margin-bottom:3px; }
+        .meta-item span  { font-size:14px; font-weight:600; color:#1e293b; }
+        .badge { display:inline-block; padding:3px 12px; border-radius:20px; font-size:11px; font-weight:700; background:${st.bg}; color:${st.color}; }
+        .total { font-size:28px; font-weight:800; color:#4f46e5; margin-bottom:24px; }
+        table { width:100%; border-collapse:collapse; margin-bottom:24px; }
+        thead tr { background:#f8fafc; }
+        th { padding:10px 10px; text-align:left; font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase; border-bottom:2px solid #e2e8f0; }
+        .footer { text-align:center; padding:16px; color:#94a3b8; font-size:11px; border-top:1px solid #f1f5f9; margin-top:8px; }
+      </style></head><body>
+      <div class="header">
+        <h1>${invoice.invoiceNumber}</h1>
+        <p>SoloSync · ${invoice.customerName || ''}</p>
+      </div>
+      <div class="body">
+        <div class="meta">
+          <div class="meta-item"><label>Müşteri</label><span>${invoice.customerName || '-'}</span></div>
+          <div class="meta-item"><label>Düzenleme</label><span>${formatDate(invoice.issueDate)}</span></div>
+          <div class="meta-item"><label>Vade</label><span>${formatDate(invoice.dueDate)}</span></div>
+          <div class="meta-item"><label>Durum</label><span class="badge">${st.label}</span></div>
+        </div>
+        <div class="total">₺${Number(invoice.totalAmount ?? 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
+        <table><thead><tr>
+          <th>Açıklama</th><th>Adet</th><th style="text-align:right">Birim Fiyat</th><th style="text-align:right">Tutar</th>
+        </tr></thead><tbody>${items}</tbody></table>
+        ${payments ? `<h3 style="font-size:14px;font-weight:700;margin:0 0 8px">Ödeme Geçmişi</h3>
+        <table><thead><tr><th>Tutar</th><th>Tarih</th><th>Not</th></tr></thead><tbody>${payments}</tbody></table>` : ''}
+      </div>
+      <div class="footer">SoloSync tarafından oluşturuldu</div>
+      </body></html>`;
+    try {
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: `Fatura ${invoice.invoiceNumber}` });
+      } else {
+        Alert.alert('PDF Oluşturuldu', `Dosya: ${uri}`);
+      }
+    } catch (e) {
+      Alert.alert('Hata', 'PDF oluşturulamadı.');
+    }
+  };
+
   const handleDelete = () => {
     Alert.alert('Faturayı sil', 'Bu taslak fatura kalıcı olarak silinecek.', [
       { text: 'İptal', style: 'cancel' },
@@ -231,6 +299,11 @@ export default function InvoiceDetailScreen({ route, navigation }) {
           ₺{Number(invoice.totalAmount ?? 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
         </Text>
       </View>
+
+      {/* PDF Export — always visible */}
+      <TouchableOpacity style={styles.pdfBtn} onPress={handleExportPDF}>
+        <Text style={styles.pdfBtnText}>PDF İndir / Paylaş</Text>
+      </TouchableOpacity>
 
       {isDraft && (
         <View style={styles.actionRow}>
@@ -382,6 +455,8 @@ const styles = StyleSheet.create({
   paidBtnText:   { color: '#fff', fontWeight: '800', fontSize: 15 },
   infoBanner:    { borderWidth: 1, borderColor: '#bfdbfe', backgroundColor: '#eff6ff', borderRadius: 12, padding: 12, marginBottom: 12 },
   infoBannerText:{ fontSize: 13, fontWeight: '600', color: '#1e40af' },
+  pdfBtn:        { backgroundColor: '#f1f5f9', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, paddingVertical: 13, alignItems: 'center', marginBottom: 10 },
+  pdfBtnText:    { color: '#475569', fontWeight: '700', fontSize: 14 },
   commentBtn:    { backgroundColor: '#0f172a', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginBottom: 12 },
   commentBtnText:{ color: '#fff', fontWeight: '800', fontSize: 15 },
   section:       { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3 },

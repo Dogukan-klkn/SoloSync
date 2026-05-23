@@ -24,6 +24,7 @@ import InvoiceListScreen from '../screens/invoices/InvoiceListScreen';
 import InvoiceDetailScreen from '../screens/invoices/InvoiceDetailScreen';
 import InvoiceFormScreen from '../screens/invoices/InvoiceFormScreen';
 import CommentScreen from '../screens/comments/CommentScreen';
+import RequestsScreen from '../screens/requests/RequestsScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -204,6 +205,20 @@ export default function MainTabNavigator() {
           headerTintColor: '#fff',
           headerTitleStyle: { fontWeight: 'bold' },
           headerTitle: 'Zaman Takibi',
+        }}
+      />
+      <Tab.Screen
+        name="Requests"
+        component={RequestsScreen}
+        options={{
+          title: 'İstekler',
+          tabBarLabel: 'İstekler',
+          tabBarIcon: ({ focused, size }) => <TabIcon emoji="📨" focused={focused} size={size} />,
+          headerShown: true,
+          headerStyle: { backgroundColor: '#0f172a' },
+          headerTintColor: '#fff',
+          headerTitleStyle: { fontWeight: 'bold' },
+          headerTitle: 'İstekler',
         }}
       />
       <Tab.Screen

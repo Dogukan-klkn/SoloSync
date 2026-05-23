@@ -237,22 +237,48 @@ namespace FreelancerSaaS.Infrastructure.Services
                 : null;
         }
 
-        private static ProjectResponse MapToResponse(Project p) => new()
+        public async Task<IEnumerable<DashboardTaskResponse>> GetDashboardTasksAsync(Guid userId)
         {
-            Id                      = p.Id,
-            CustomerId              = p.CustomerId,
-            CustomerName            = p.Customer?.CompanyName ?? string.Empty,
-            Name                    = p.Name,
-            Description             = p.Description,
-            Status                  = p.Status.ToString(),
-            StatusValue             = (int)p.Status,
-            StartDate               = p.StartDate,
-            EndDate                 = p.EndDate,
-            Budget                  = p.Budget,
-            CreatedAt               = p.CreatedAt,
-            MilestoneCount          = p.Milestones?.Count ?? 0,
-            CompletedMilestoneCount = p.Milestones?.Count(m => m.IsCompleted) ?? 0,
-        };
+            var tasks = await _projectRepo.GetAllTasksByUserIdAsync(userId);
+            return tasks.Select(t => new DashboardTaskResponse
+            {
+                Id          = t.Id,
+                Title       = t.Title,
+                Status      = t.Status.ToString(),
+                StatusValue = (int)t.Status,
+                ProjectId   = t.ProjectId,
+                ProjectName = t.Project?.Name ?? string.Empty,
+                MilestoneId = t.MilestoneId,
+                Tags        = t.Tags?.Select(tag => tag.Label).ToList() ?? new List<string>(),
+            });
+        }
+
+        private static ProjectResponse MapToResponse(Project p)
+        {
+            var total     = p.Tasks?.Count ?? 0;
+            var completed = p.Tasks?.Count(t => t.Status == ProjectTaskStatus.Done) ?? 0;
+            var pct       = total > 0 ? (int)Math.Round((double)completed / total * 100) : 0;
+            return new ProjectResponse
+            {
+                Id                      = p.Id,
+                CustomerId              = p.CustomerId,
+                CustomerName            = p.Customer?.CompanyName ?? string.Empty,
+                Name                    = p.Name,
+                Description             = p.Description,
+                Status                  = p.Status.ToString(),
+                StatusValue             = (int)p.Status,
+                StartDate               = p.StartDate,
+                EndDate                 = p.EndDate,
+                Budget                  = p.Budget,
+                CreatedAt               = p.CreatedAt,
+                UpdatedAt               = p.UpdatedAt ?? p.CreatedAt,
+                MilestoneCount          = p.Milestones?.Count ?? 0,
+                CompletedMilestoneCount = p.Milestones?.Count(m => m.IsCompleted) ?? 0,
+                TotalTaskCount          = total,
+                CompletedTaskCount      = completed,
+                ProgressPercentage      = pct,
+            };
+        }
 
         private static MilestoneResponse MapMilestone(Milestone m, int totalTasks, int completedTasks)
         {

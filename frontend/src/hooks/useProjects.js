@@ -62,3 +62,11 @@ export function useAddMilestone(projectId) {
   });
 }
 
+export function useAllProjectTasks() {
+  return useQuery({
+    queryKey: ['dashboard-tasks'],
+    queryFn:  () => projectService.getDashboardTasks().then(r => r.data),
+    staleTime: 1000 * 60,
+  });
+}
+

@@ -90,10 +90,27 @@ namespace FreelancerSaaS.Core.DTOs
         public DateTime? EndDate { get; set; }
         public decimal? Budget { get; set; }
         public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
         public int MilestoneCount { get; set; }
         public int CompletedMilestoneCount { get; set; }
+        public int TotalTaskCount { get; set; }
+        public int CompletedTaskCount { get; set; }
+        public int ProgressPercentage { get; set; }
         /// <summary>Yalnızca Client Portal yanıtlarında doldurulur; Freelancer sorgularında 0 döner.</summary>
         public int PendingRequestCount { get; set; }
+    }
+
+    // ─── Dashboard Task DTO ───────────────────────────────────
+    public class DashboardTaskResponse
+    {
+        public Guid Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public int StatusValue { get; set; }
+        public Guid ProjectId { get; set; }
+        public string ProjectName { get; set; } = string.Empty;
+        public Guid? MilestoneId { get; set; }
+        public List<string> Tags { get; set; } = new();
     }
 
     // ─── Milestone DTOs ───────────────────────────────────────

@@ -77,5 +77,14 @@ namespace FreelancerSaaS.API.Controllers
             return Ok(result);
         }
 
+        // GET api/projects/tasks/dashboard — Dashboard Task Board için tüm aktif görevler
+        [HttpGet("tasks/dashboard")]
+        [Authorize(Policy = "FreelancerOnly")]
+        public async Task<IActionResult> GetDashboardTasks()
+        {
+            var result = await _service.GetDashboardTasksAsync(GetUserId());
+            return Ok(result);
+        }
+
     }
 }

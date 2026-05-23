@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, CheckCircle, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Send, CheckCircle, Plus, Trash2, Download } from 'lucide-react';
 import { useInvoice, useSendInvoice, useClientAction, useAddInvoiceItem, useRemoveInvoiceItem, useAddPayment } from '../hooks/useInvoices';
 import CommentSection from '../components/comments/CommentSection';
 import { useAuth } from '../store/authStore';
@@ -36,6 +36,89 @@ export default function InvoiceDetailPage() {
   const [showAddPayment, setShowAddPayment] = useState(false);
   const [newPayment, setNewPayment] = useState({ amount: 0, paymentDate: new Date().toISOString().split('T')[0], method: 1, notes: '' });
   const [revisionNote, setRevisionNote] = useState('');
+
+  const handleExportPDF = () => {
+    const statusLabel = STATUS_LABELS[invoice.status] || invoice.status;
+    const itemsHtml = (invoice.items || []).map(item => `
+      <tr>
+        <td>${item.description}</td>
+        <td style="text-align:center">${item.quantity}</td>
+        <td style="text-align:right">${formatCurrency(item.unitPrice)}</td>
+        <td style="text-align:right;font-weight:600">${formatCurrency(item.amount)}</td>
+      </tr>`).join('');
+    const paymentsHtml = invoice.payments?.length ? `
+      <h3 style="font-size:13px;font-weight:700;margin:0 0 8px;color:#0f172a">Ödeme Geçmişi</h3>
+      <table>
+        <thead><tr><th>Tutar</th><th>Tarih</th><th>Yöntem</th><th>Not</th></tr></thead>
+        <tbody>${invoice.payments.map(p => `
+          <tr>
+            <td style="color:#059669;font-weight:600">${formatCurrency(p.amount)}</td>
+            <td>${formatDate(p.paymentDate)}</td>
+            <td>${p.method}</td>
+            <td>${p.notes || '-'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>` : '';
+    const html = `<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Fatura ${invoice.invoiceNumber}</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: Arial, Helvetica, sans-serif; color:#0f172a; background:#fff; }
+    .hdr { background:#4f46e5; color:#fff; padding:24px 32px; display:flex; justify-content:space-between; align-items:flex-start; }
+    .hdr h1 { font-size:26px; font-weight:800; }
+    .hdr .num { font-size:13px; opacity:.85; margin-top:4px; }
+    .body { padding:28px 32px; }
+    .meta { display:flex; gap:36px; flex-wrap:wrap; margin-bottom:20px; }
+    .meta-item label { font-size:10px; font-weight:700; text-transform:uppercase; color:#94a3b8; display:block; margin-bottom:3px; letter-spacing:.05em; }
+    .meta-item span  { font-size:14px; font-weight:600; color:#1e293b; }
+    .total { font-size:28px; font-weight:800; color:#4f46e5; margin:12px 0 22px; }
+    table { width:100%; border-collapse:collapse; margin-bottom:22px; }
+    thead tr { background:#f8fafc; }
+    th { padding:10px 12px; text-align:left; font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; border-bottom:2px solid #e2e8f0; }
+    td { padding:10px 12px; font-size:13px; border-bottom:1px solid #f1f5f9; }
+    tfoot td { background:#f1f5f9; font-weight:700; font-size:13px; }
+    .footer { text-align:center; color:#94a3b8; font-size:11px; padding:16px; border-top:1px solid #f1f5f9; margin-top:4px; }
+    @media print { html,body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+  </style>
+</head>
+<body>
+  <div class="hdr">
+    <div><h1>FATURA</h1><div style="opacity:.75;font-size:12px;margin-top:3px">SoloSync</div></div>
+    <div class="num">${invoice.invoiceNumber}</div>
+  </div>
+  <div class="body">
+    <div class="meta">
+      <div class="meta-item"><label>Müşteri</label><span>${invoice.customerName || '-'}</span></div>
+      <div class="meta-item"><label>Düzenleme Tarihi</label><span>${formatDate(invoice.issueDate)}</span></div>
+      <div class="meta-item"><label>Vade Tarihi</label><span>${formatDate(invoice.dueDate)}</span></div>
+      <div class="meta-item"><label>Durum</label><span>${statusLabel}</span></div>
+    </div>
+    <div class="total">${formatCurrency(invoice.totalAmount ?? 0)}</div>
+    <table>
+      <thead><tr>
+        <th>Açıklama</th><th>Adet</th>
+        <th style="text-align:right">Birim Fiyat</th>
+        <th style="text-align:right">Tutar</th>
+      </tr></thead>
+      <tbody>${itemsHtml}</tbody>
+      <tfoot><tr>
+        <td colspan="3" style="text-align:right">TOPLAM</td>
+        <td style="text-align:right">${formatCurrency(invoice.totalAmount ?? 0)}</td>
+      </tr></tfoot>
+    </table>
+    ${paymentsHtml}
+  </div>
+  <div class="footer">SoloSync tarafından oluşturuldu</div>
+  <script>window.onload=function(){window.print();}<\/script>
+</body></html>`;
+    const win = window.open('', '_blank', 'width=900,height=750');
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+  };
 
   if (isLoading) return <div className="p-8 text-center text-gray-400">Yükleniyor...</div>;
   if (!invoice) return <div className="p-8 text-center text-red-400">Fatura bulunamadı.</div>;
@@ -77,6 +160,10 @@ export default function InvoiceDetailPage() {
       {/* Freelancer aksiyonları */}
       {role === 'Freelancer' && (
         <div className="flex gap-3 mb-6">
+          <button onClick={handleExportPDF}
+            className="flex items-center gap-2 border border-slate-200 text-slate-700 rounded-xl px-4 py-2 text-sm font-medium hover:bg-slate-50 transition-colors">
+            <Download size={14} /> PDF İndir
+          </button>
           {invoice.status === 'Draft' && (
             <button onClick={handleSend} className="flex items-center gap-2 bg-blue-600 text-white rounded-xl px-4 py-2 text-sm font-medium hover:bg-blue-700">
               <Send size={14} /> Gönder

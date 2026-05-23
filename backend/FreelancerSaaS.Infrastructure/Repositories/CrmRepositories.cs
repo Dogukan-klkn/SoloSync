@@ -30,6 +30,7 @@ namespace FreelancerSaaS.Infrastructure.Repositories
             await _context.Projects
                 .Include(p => p.Customer)
                 .Include(p => p.Milestones)
+                .Include(p => p.Tasks)
                 .Where(p => p.CustomerId == customerId)
                 .OrderByDescending(p => p.CreatedAt)
                 .ToListAsync();
@@ -38,14 +39,27 @@ namespace FreelancerSaaS.Infrastructure.Repositories
             await _context.Projects
                 .Include(p => p.Customer)
                 .Include(p => p.Milestones.OrderBy(m => m.Order))
+                .Include(p => p.Tasks)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
         public async Task<IEnumerable<Project>> GetProjectsByUserIdAsync(Guid userId) =>
             await _context.Projects
                 .Include(p => p.Customer)
                 .Include(p => p.Milestones)
+                .Include(p => p.Tasks)
                 .Where(p => p.Customer.UserId == userId)
                 .OrderByDescending(p => p.CreatedAt)
+                .ToListAsync();
+
+        public async Task<IEnumerable<ProjectTask>> GetAllTasksByUserIdAsync(Guid userId) =>
+            await _context.ProjectTasks
+                .Include(t => t.Project)
+                .Include(t => t.Tags)
+                .Where(t => t.Project.Customer.UserId == userId
+                         && t.Project.Status != ProjectStatus.Completed)
+                .OrderBy(t => t.Status)
+                .ThenByDescending(t => t.CreatedAt)
+                .Take(30)
                 .ToListAsync();
     }
 
