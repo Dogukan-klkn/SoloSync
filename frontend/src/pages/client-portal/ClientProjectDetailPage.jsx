@@ -1,13 +1,13 @@
-import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 import {
   useMyProject, useMyMilestones, useMyTasks,
-  useMyRequests, useSendRequest
+  useMyRequests, useSendRequest, usePreviewRequest
 } from '../../hooks/useClientPortal';
 import { useAuth } from '../../store/authStore';
 import {
   ChevronLeft, Flag, CheckCircle2, Circle, Clock, Send,
-  MessageSquare, ListTodo, AlertCircle
+  ListTodo, AlertCircle, Sparkles, Loader2
 } from 'lucide-react';
 
 const statusLabel = {
@@ -30,16 +30,24 @@ const formatDate = (d) => d ? new Date(d).toLocaleDateString('tr-TR', { day: 'nu
 
 const ClientProjectDetailPage = () => {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
   const [requestMessage, setRequestMessage] = useState('');
+  const [sendSuccess, setSendSuccess] = useState(false);
+  const [sendError, setSendError] = useState('');
 
   const { data: project, isLoading: projectLoading } = useMyProject(id);
   const { data: milestones = [] } = useMyMilestones(id);
   const { data: tasks = [] } = useMyTasks(id);
   const { data: requests = [] } = useMyRequests(id);
 
-  const sendRequest = useSendRequest(id);
+  const sendRequest   = useSendRequest(id);
+  const previewRequest = usePreviewRequest(id);
+
+  useEffect(() => {
+    if (searchParams.get('tab') === 'requests') setActiveTab(2);
+  }, [searchParams]);
 
   if (projectLoading) return <div className="text-center py-20 text-slate-400">Yükleniyor...</div>;
   if (!project) return <div className="text-center py-20 text-slate-500">Proje bulunamadı.</div>;
@@ -52,8 +60,16 @@ const ClientProjectDetailPage = () => {
   const handleSendRequest = async (e) => {
     e.preventDefault();
     if (!requestMessage.trim()) return;
-    await sendRequest.mutateAsync(requestMessage.trim());
-    setRequestMessage('');
+    setSendError('');
+    setSendSuccess(false);
+    try {
+      await sendRequest.mutateAsync(requestMessage.trim());
+      setRequestMessage('');
+      setSendSuccess(true);
+      setTimeout(() => setSendSuccess(false), 4000);
+    } catch {
+      setSendError('İstek gönderilemedi. Lütfen tekrar deneyin.');
+    }
   };
 
   return (
@@ -107,7 +123,7 @@ const ClientProjectDetailPage = () => {
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
-            {t}
+            {t}{i === 2 && requests.length > 0 ? ` (${requests.length})` : ''}
           </button>
         ))}
       </div>
@@ -192,7 +208,10 @@ const ClientProjectDetailPage = () => {
           requestMessage={requestMessage}
           setRequestMessage={setRequestMessage}
           sendRequest={sendRequest}
+          previewRequest={previewRequest}
           handleSendRequest={handleSendRequest}
+          sendSuccess={sendSuccess}
+          sendError={sendError}
         />
       )}
 
@@ -200,56 +219,122 @@ const ClientProjectDetailPage = () => {
   );
 };
 
-const RequestsTab = ({ requests, requestMessage, setRequestMessage, sendRequest, handleSendRequest }) => (
+const REQUEST_STATUS = {
+  Pending:  { label: 'İncelemede', cls: 'bg-amber-100 text-amber-700' },
+  Approved: { label: 'Onaylandı',  cls: 'bg-emerald-100 text-emerald-700' },
+  Rejected: { label: 'Reddedildi', cls: 'bg-red-100 text-red-600' },
+};
+
+const RequestsTab = ({
+  requests, requestMessage, setRequestMessage,
+  sendRequest, previewRequest, handleSendRequest, sendSuccess, sendError,
+}) => {
+  const [preview, setPreview] = useState(null);
+  const [previewError, setPreviewError] = useState('');
+
+  const handlePreview = async () => {
+    if (!requestMessage.trim()) return;
+    setPreviewError('');
+    setPreview(null);
+    try {
+      const result = await previewRequest.mutateAsync(requestMessage.trim());
+      setPreview(result);
+    } catch {
+      setPreviewError('Önizleme oluşturulamadı. Yine de gönderebilirsiniz.');
+    }
+  };
+
+  return (
   <div className="space-y-5">
     <form onSubmit={handleSendRequest} className="bg-white border border-slate-200 rounded-xl p-5">
-      <h3 className="font-medium text-slate-800 mb-3">Yeni İstek Gönder</h3>
+      <h3 className="font-medium text-slate-800 mb-1">Yeni İstek Gönder</h3>
+      <p className="text-xs text-slate-400 mb-3">
+        İsteğinizi rahatça yazın, detay vermekten çekinmeyin — AI freelancer&apos;ınız için net bir görev özeti üretir.
+      </p>
       <textarea
         value={requestMessage}
-        onChange={e => setRequestMessage(e.target.value)}
-        rows={3}
-        placeholder="Freelancer'ınıza iletmek istediğiniz istek veya geri bildirimi buraya yazın..."
-        className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent resize-none"
+        onChange={(e) => { setRequestMessage(e.target.value); setPreview(null); }}
+        rows={4}
+        maxLength={5000}
+        placeholder="Freelancer'ınıza iletmek istediğiniz isteği veya geri bildirimi yazın..."
+        className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent resize-none"
       />
-      <div className="flex justify-end mt-3">
-        <button
-          type="submit"
-          disabled={!requestMessage.trim() || sendRequest.isPending}
-          className="bg-violet-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-violet-700 disabled:opacity-50 transition-colors flex items-center gap-2"
-        >
-          <Send className="w-3.5 h-3.5" />
-          {sendRequest.isPending ? 'Gönderiliyor...' : 'Gönder'}
-        </button>
+      <div className="flex items-center justify-between mt-3 gap-2 flex-wrap">
+        <span className="text-xs text-slate-400">{requestMessage.length}/5000</span>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={handlePreview}
+            disabled={!requestMessage.trim() || previewRequest.isPending}
+            className="border border-violet-200 text-violet-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-violet-50 disabled:opacity-50 flex items-center gap-2"
+          >
+            {previewRequest.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+            AI Önizle
+          </button>
+          <button
+            type="submit"
+            disabled={!requestMessage.trim() || sendRequest.isPending}
+            className="bg-violet-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-violet-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+          >
+            <Send className="w-3.5 h-3.5" />
+            {sendRequest.isPending ? 'Gönderiliyor...' : 'Gönder'}
+          </button>
+        </div>
       </div>
+      {preview && (
+        <div className="mt-4 p-4 bg-violet-50 border border-violet-100 rounded-xl">
+          <p className="text-xs font-semibold text-violet-800 mb-1 flex items-center gap-1">
+            <Sparkles className="w-3.5 h-3.5" /> İsteğiniz şöyle anlaşıldı
+          </p>
+          <p className="text-sm text-violet-900">{preview.clientPreview || preview.summary}</p>
+          {preview.taskItems?.length > 0 && (
+            <ul className="mt-2 space-y-1">
+              {preview.taskItems.map((item, i) => (
+                <li key={i} className="text-xs text-violet-700">• {item}</li>
+              ))}
+            </ul>
+          )}
+          {!preview.isAiPowered && (
+            <p className="text-xs text-amber-600 mt-2">
+              Gercek AI ozeti icin Groq API anahtarini appsettings.Development.json dosyasina ekleyin (console.groq.com).
+            </p>
+          )}
+        </div>
+      )}
+      {previewError && <p className="mt-3 text-sm text-amber-600">{previewError}</p>}
+      {sendSuccess && (
+        <p className="mt-3 text-sm text-emerald-600 font-medium">İsteğiniz freelancer&apos;ınıza iletildi.</p>
+      )}
+      {sendError && (
+        <p className="mt-3 text-sm text-red-600">{sendError}</p>
+      )}
     </form>
+
     <div className="space-y-3">
       {requests.length === 0 ? (
         <div className="text-center py-8 text-slate-400 text-sm">
           <ListTodo className="w-8 h-8 mx-auto mb-2 text-slate-300" />
           Henüz istek gönderilmedi
         </div>
-      ) : requests.map(r => (
-        <div key={r.id} className="bg-white border border-slate-200 rounded-xl p-4">
-          <div className="flex items-start justify-between gap-3 mb-2">
-            <p className="text-sm text-slate-700">{r.originalMessage}</p>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
-              r.status === 'Pending' ? 'bg-amber-100 text-amber-700' :
-              r.status === 'Approved' ? 'bg-green-100 text-green-700' :
-              'bg-red-100 text-red-600'
-            }`}>
-              {r.status === 'Pending' ? 'İncelemede' : r.status === 'Approved' ? 'Onaylandı' : 'Reddedildi'}
-            </span>
+      ) : requests.map((r) => {
+        const st = REQUEST_STATUS[r.status] ?? REQUEST_STATUS.Pending;
+        return (
+          <div key={r.id} className="bg-white border border-slate-200 rounded-xl p-4">
+            <div className="flex items-start justify-between gap-3 mb-2">
+              <span className={`text-xs px-2.5 py-1 rounded-full font-semibold flex-shrink-0 ${st.cls}`}>
+                {st.label}
+              </span>
+              <span className="text-xs text-slate-400 flex-shrink-0">
+                {new Date(r.requestedAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })}
+              </span>
+            </div>
+            <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{r.originalMessage}</p>
           </div>
-          {r.summarizedTodo && r.summarizedTodo !== r.originalMessage && (
-            <p className="text-xs text-slate-400 italic border-l-2 border-slate-200 pl-2">{r.summarizedTodo}</p>
-          )}
-          <p className="text-xs text-slate-400 mt-2">
-            {new Date(r.requestedAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
-          </p>
-        </div>
-      ))}
+        );
+      })}
     </div>
   </div>
-);
+  );
+};
 
 export default ClientProjectDetailPage;

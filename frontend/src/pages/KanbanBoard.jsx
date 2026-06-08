@@ -4,6 +4,7 @@ import { useProject } from '../hooks/useProjects';
 import { useProjectTasks, useDeleteTask, useReorderTasks } from '../hooks/useProjectTasks';
 import { useClientRequests, useReviewClientRequest } from '../hooks/useClientRequests';
 import TaskModal from '../components/tasks/TaskModal';
+import RequestAiHints from '../components/requests/RequestAiHints';
 import {
   ArrowLeft, Plus, GripVertical, Pencil, Trash2,
   Calendar, AlertTriangle, AlertCircle, ArrowUp, Minus, ChevronDown, ChevronUp
@@ -186,6 +187,7 @@ export default function KanbanBoard() {
                 <div>
                   <p className="text-sm font-semibold text-gray-900 mb-1">{req.summarizedTodo}</p>
                   <p className="text-xs text-gray-400">{req.customerName} · {new Date(req.requestedAt).toLocaleDateString('tr-TR')}</p>
+                  <RequestAiHints request={req} />
                 </div>
               </div>
               <button

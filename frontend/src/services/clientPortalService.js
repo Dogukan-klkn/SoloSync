@@ -6,6 +6,9 @@ export const clientPortalService = {
   getMyProfile: () =>
     api.get(`${BASE}/me`).then(r => r.data),
 
+  updateMyProfile: (data) =>
+    api.put(`${BASE}/me`, data).then(r => r.data),
+
   getMyProjects: () =>
     api.get(`${BASE}/projects`).then(r => r.data),
 
@@ -31,6 +34,9 @@ export const clientPortalService = {
 
   sendRequest: (projectId, message) =>
     api.post(`${BASE}/projects/${projectId}/requests`, { projectId, message }).then(r => r.data),
+
+  previewRequest: (projectId, message) =>
+    api.post(`${BASE}/projects/${projectId}/requests/preview`, { message }).then(r => r.data),
 
   getMyRequests: (projectId) =>
     api.get(`${BASE}/projects/${projectId}/requests`).then(r => r.data),

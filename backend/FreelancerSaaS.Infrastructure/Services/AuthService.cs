@@ -69,6 +69,41 @@ namespace FreelancerSaaS.Infrastructure.Services
             return await GenerateAuthResponse(user);
         }
 
+        public async Task<UserProfileResponse?> GetProfileAsync(Guid userId)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            return user == null ? null : MapProfile(user);
+        }
+
+        public async Task<UserProfileResponse> UpdateProfileAsync(Guid userId, UpdateUserProfileRequest request)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId)
+                ?? throw new KeyNotFoundException("Kullanıcı bulunamadı.");
+
+            if (!string.Equals(user.Email, request.Email, StringComparison.OrdinalIgnoreCase) &&
+                await _context.Users.AnyAsync(u => u.Email == request.Email && u.Id != userId))
+                throw new ArgumentException("Bu e-posta adresi başka bir hesap tarafından kullanılıyor.");
+
+            user.FirstName          = request.FirstName.Trim();
+            user.LastName           = request.LastName.Trim();
+            user.Email              = request.Email.Trim();
+            user.ProfilePictureUrl  = string.IsNullOrWhiteSpace(request.ProfilePictureUrl) ? null : request.ProfilePictureUrl.Trim();
+            user.UpdatedAt          = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            return MapProfile(user);
+        }
+
+        private static UserProfileResponse MapProfile(User user) => new()
+        {
+            Id                 = user.Id,
+            FirstName          = user.FirstName,
+            LastName           = user.LastName,
+            Email              = user.Email,
+            Role               = user.Role.ToString(),
+            ProfilePictureUrl  = user.ProfilePictureUrl,
+        };
+
         // ─── Private Helpers ─────────────────────────────────
 
         private async Task<AuthResponse> GenerateAuthResponse(User user)

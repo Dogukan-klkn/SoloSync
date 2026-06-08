@@ -1,6 +1,6 @@
 // src/screens/tasks/TaskListScreen.js
 import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { taskApi } from '../../services/taskApi';
 
@@ -29,17 +29,23 @@ export default function TaskListScreen({ route, navigation }) {
   const { projectId, projectName } = route.params;
   const [tasks, setTasks]     = useState([]);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const { data } = await taskApi.getByProject(projectId);
       setTasks(data);
-    } catch { Alert.alert('Hata', 'Görevler yüklenemedi.'); }
-    finally  { setLoading(false); }
+    } catch { if (!silent) Alert.alert('Hata', 'Görevler yüklenemedi.'); }
+    finally  {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, [projectId]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const onRefresh = () => { setRefreshing(true); load(true); };
 
   const handleDelete = (task) => {
     Alert.alert('Sil', `"${task.title}" silinsin mi?`, [
@@ -70,7 +76,7 @@ export default function TaskListScreen({ route, navigation }) {
     } catch { Alert.alert('Hata', 'Durum güncellenemedi.'); }
   };
 
-  if (loading) return <ActivityIndicator size="large" color="#0ea5e9" style={{ marginTop: 60 }} />;
+  if (loading && !refreshing) return <ActivityIndicator size="large" color="#0ea5e9" style={{ marginTop: 60 }} />;
 
   // Görevleri duruma göre grupla
   const grouped = STATUS_VALUES.map(sv => ({
@@ -79,7 +85,11 @@ export default function TaskListScreen({ route, navigation }) {
   }));
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0ea5e9" />}
+    >
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.projectName}>{projectName}</Text>

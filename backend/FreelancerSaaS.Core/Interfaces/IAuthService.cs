@@ -8,5 +8,7 @@ namespace FreelancerSaaS.Core.Interfaces
         Task<AuthResponse> RegisterAsync(RegisterRequest request);
         Task<AuthResponse> LoginAsync(LoginRequest request);
         Task<AuthResponse> RefreshTokenAsync(RefreshTokenRequest request);
+        Task<UserProfileResponse?> GetProfileAsync(Guid userId);
+        Task<UserProfileResponse> UpdateProfileAsync(Guid userId, UpdateUserProfileRequest request);
     }
 }

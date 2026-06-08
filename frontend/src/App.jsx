@@ -22,6 +22,8 @@ import ClientProjectDetailPage from './pages/client-portal/ClientProjectDetailPa
 import ClientInvoicesPage from './pages/client-portal/ClientInvoicesPage';
 import ClientInvoiceDetailPage from './pages/client-portal/ClientInvoiceDetailPage';
 import ClientMessagesPage from './pages/client-portal/ClientMessagesPage';
+import ClientRequestsPage from './pages/client-portal/ClientRequestsPage';
+import ProfileSettingsPage from './pages/ProfileSettingsPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -54,6 +56,7 @@ function App() {
                 <Route path="invoices/:id"          element={<InvoiceDetailPage />} />
                 <Route path="requests"              element={<RequestsPage />} />
                 <Route path="settings"              element={<DashboardHome />} />
+                <Route path="profile"               element={<ProfileSettingsPage />} />
               </Route>
             </Route>
 
@@ -65,7 +68,9 @@ function App() {
                 <Route path="projects/:id"           element={<ClientProjectDetailPage />} />
                 <Route path="invoices"               element={<ClientInvoicesPage />} />
                 <Route path="invoices/:id"           element={<ClientInvoiceDetailPage />} />
+                <Route path="requests"               element={<ClientRequestsPage />} />
                 <Route path="messages"               element={<ClientMessagesPage />} />
+                <Route path="profile"                element={<ProfileSettingsPage />} />
               </Route>
             </Route>
 

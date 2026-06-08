@@ -52,6 +52,14 @@ namespace FreelancerSaaS.Core.DTOs
         public string FreelancerEmail { get; set; } = string.Empty;
     }
 
+    public class UpdateClientProfileRequest
+    {
+        public string CompanyName { get; set; } = string.Empty;
+        public string ContactName { get; set; } = string.Empty;
+        public string? Phone { get; set; }
+        public string? BillingAddress { get; set; }
+    }
+
     // ─── Project DTOs ─────────────────────────────────────────
     public class CreateProjectRequest
     {
@@ -389,6 +397,12 @@ namespace FreelancerSaaS.Core.DTOs
         public string CustomerName     { get; set; } = string.Empty;
         public string OriginalMessage  { get; set; } = string.Empty;
         public string SummarizedTodo   { get; set; } = string.Empty;
+        public string? SuggestedPriority { get; set; }
+        public string? ClientPreview     { get; set; }
+        public List<string> AiTaskItems  { get; set; } = [];
+        public List<string> AiTags       { get; set; } = [];
+        public string? AiProvider        { get; set; }
+        public bool   IsAiPowered        { get; set; }
         public string Status           { get; set; } = string.Empty;
         public int    StatusValue      { get; set; }
         public Guid?  ApprovedTaskId   { get; set; }

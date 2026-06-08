@@ -1,6 +1,6 @@
 // src/screens/projects/ProjectListScreen.js
 import React, { useState, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { projectApi } from '../../services/projectApi';
 
@@ -14,20 +14,24 @@ const STATUS = {
 export default function ProjectListScreen({ navigation }) {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading]   = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const { data } = await projectApi.getAll();
       setProjects(data);
     } catch {
-      Alert.alert('Hata', 'Projeler yüklenemedi.');
+      if (!silent) Alert.alert('Hata', 'Projeler yüklenemedi.');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const onRefresh = () => { setRefreshing(true); load(true); };
 
   const renderItem = ({ item }) => {
     const st  = STATUS[item.status] ?? STATUS.Pending;
@@ -65,7 +69,7 @@ export default function ProjectListScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {loading ? (
+      {loading && projects.length === 0 ? (
         <ActivityIndicator size="large" color="#0ea5e9" style={{ marginTop: 40 }} />
       ) : (
         <FlatList
@@ -74,6 +78,7 @@ export default function ProjectListScreen({ navigation }) {
           renderItem={renderItem}
           contentContainerStyle={projects.length === 0 ? styles.emptyContainer : { padding: 16 }}
           ListEmptyComponent={<Text style={styles.empty}>Henüz proje yok</Text>}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0ea5e9" />}
         />
       )}
       <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('ProjectForm', { project: null })}>

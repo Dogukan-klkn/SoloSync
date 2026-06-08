@@ -2,10 +2,12 @@
 import { useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../store/authStore';
+import { useAllClientRequests } from '../hooks/useClientRequests';
 import {
   LayoutDashboard, FolderKanban,
-  Users, Settings, Menu, X, LogOut, ChevronRight, Timer, FileText, Send
+  Users, Settings, Menu, PanelLeftClose, LogOut, ChevronRight, Timer, FileText, Send
 } from 'lucide-react';
+import ProfileMenu from '../components/profile/ProfileMenu';
 
 const NAV_ITEMS = [
   { to: '/dashboard',                label: 'Dashboard',     icon: LayoutDashboard },
@@ -22,6 +24,8 @@ const DashboardLayout = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const { data: pendingRequests = [] } = useAllClientRequests('Pending');
+  const pendingCount = pendingRequests.length;
 
   // Client rolü mü? Sadece Freelancer'a açık menü öğeleri filtrele
   const userRole    = user?.role ?? '';
@@ -33,6 +37,16 @@ const DashboardLayout = () => {
     logout();
     navigate('/login');
   };
+
+  const pageTitle = (() => {
+    if (location.pathname.includes('/profile')) return 'Profil Ayarları';
+    const match = NAV_ITEMS.find((n) =>
+      n.to === '/dashboard'
+        ? location.pathname === n.to
+        : location.pathname.startsWith(n.to)
+    );
+    return match?.label ?? 'Dashboard';
+  })();
 
   return (
     <div className="flex h-screen bg-slate-100 overflow-hidden">
@@ -61,11 +75,12 @@ const DashboardLayout = () => {
             const active = to === '/dashboard'
               ? location.pathname === to
               : location.pathname.startsWith(to);
+            const showBadge = to === '/dashboard/requests' && pendingCount > 0;
             return (
               <Link
                 key={to}
                 to={to}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 group ${
+                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 group ${
                   active
                     ? 'bg-brand-600 text-white shadow-lg'
                     : 'text-slate-400 hover:bg-slate-800 hover:text-white'
@@ -73,7 +88,14 @@ const DashboardLayout = () => {
               >
                 <Icon className="w-5 h-5 flex-shrink-0" />
                 {sidebarOpen && <span className="text-sm font-medium">{label}</span>}
-                {sidebarOpen && active && (
+                {showBadge && (
+                  <span className={`text-xs font-bold rounded-full min-w-[1.25rem] h-5 px-1.5 flex items-center justify-center ${
+                    active ? 'bg-white text-brand-600' : 'bg-amber-500 text-white'
+                  } ${sidebarOpen ? 'ml-auto' : 'absolute left-9 top-1'}`}>
+                    {pendingCount}
+                  </span>
+                )}
+                {sidebarOpen && active && !showBadge && (
                   <ChevronRight className="w-4 h-4 ml-auto" />
                 )}
               </Link>
@@ -106,16 +128,13 @@ const DashboardLayout = () => {
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="text-slate-500 hover:text-slate-900 transition"
+            aria-label={sidebarOpen ? 'Kenar çubuğunu daralt' : 'Kenar çubuğunu genişlet'}
           >
-            {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {sidebarOpen ? <PanelLeftClose className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
-          <h2 className="font-semibold text-slate-800 text-lg">
-            {NAV_ITEMS.find((n) => n.to === location.pathname)?.label ?? 'Dashboard'}
-          </h2>
+          <h2 className="font-semibold text-slate-800 text-lg">{pageTitle}</h2>
           <div className="ml-auto flex items-center gap-3">
-            <div className="w-8 h-8 bg-brand-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
-              {user?.fullName?.[0] ?? 'U'}
-            </div>
+            <ProfileMenu variant="freelancer" subtitle={user?.role} />
           </div>
         </header>
 

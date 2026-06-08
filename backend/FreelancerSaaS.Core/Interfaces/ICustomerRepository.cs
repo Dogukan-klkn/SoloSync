@@ -47,6 +47,7 @@ namespace FreelancerSaaS.Core.Interfaces
     public interface IClientRequestRepository : IGenericRepository<ClientRequest>
     {
         Task<IEnumerable<ClientRequest>> GetByProjectIdAsync(Guid projectId, string? status = null);
+        Task<IEnumerable<ClientRequest>> GetAllByFreelancerIdAsync(Guid freelancerId, string? status = null);
         Task<IEnumerable<ClientRequest>> GetPendingByProjectIdAsync(Guid projectId);
         Task<ClientRequest?> GetByIdWithDetailsAsync(Guid id);
     }

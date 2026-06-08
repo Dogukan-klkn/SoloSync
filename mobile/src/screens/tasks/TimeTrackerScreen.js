@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, ActivityIndicator, Alert, TextInput,
+  StyleSheet, ActivityIndicator, Alert, TextInput, RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
@@ -52,9 +52,11 @@ export default function TimeTrackerScreen() {
   const [selectedTask, setSelectedTask]       = useState('');
   const [description, setDescription]         = useState('');
   const [loading, setLoading]                 = useState(false);
+  const [refreshing, setRefreshing]           = useState(false);
 
   // Verileri yükle
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [projectsRes, runningRes, entriesRes, summaryRes] = await Promise.allSettled([
         projectApi.getAll(),
@@ -68,9 +70,15 @@ export default function TimeTrackerScreen() {
       if (entriesRes.status === 'fulfilled')  setEntries(entriesRes.value.data ?? []);
       if (summaryRes.status === 'fulfilled')  setTodaySummary(summaryRes.value.data ?? null);
     } catch {}
+    finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
 
   useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
+
+  const onRefresh = () => { setRefreshing(true); loadData(true); };
 
   // Proje değişince görevleri yükle
   useEffect(() => {
@@ -169,7 +177,11 @@ export default function TimeTrackerScreen() {
   const totalAnalyticsSeconds = projectStats.reduce((s, p) => s + p.totalSeconds, 0);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0ea5e9" />}
+    >
       {/* Kronometre Kartı */}
       <View style={styles.card}>
         {running ? (

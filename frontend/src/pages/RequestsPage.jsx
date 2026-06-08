@@ -1,22 +1,53 @@
-// src/pages/RequestsPage.jsx
-import { Send, Clock, CheckCircle2, XCircle, MessageSquare } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Send, Clock, CheckCircle2, XCircle, ChevronDown, ChevronUp,
+  ExternalLink, Loader2,
+} from 'lucide-react';
+import { useAllClientRequests, useReviewClientRequest } from '../hooks/useClientRequests';
+import RequestAiHints from '../components/requests/RequestAiHints';
 
-const MOCK_REQUESTS = [
-  { id: 1, title: 'Anasayfa tasarım revizyonu', project: 'E-Ticaret Projesi', client: 'Acme A.Ş.', date: '2025-05-20', status: 'pending',  note: 'Logonun daha büyük olmasını istiyoruz.' },
-  { id: 2, title: 'Mobil uyumluluk iyileştirmesi', project: 'Kurumsal Web Sitesi', client: 'Beta Ltd.', date: '2025-05-18', status: 'approved', note: '' },
-  { id: 3, title: 'Ödeme entegrasyonu hatası', project: 'E-Ticaret Projesi', client: 'Acme A.Ş.', date: '2025-05-15', status: 'rejected', note: 'Kapsam dışı.' },
+const STATUS_TABS = [
+  { key: '', label: 'Tümü' },
+  { key: 'Pending', label: 'Beklemede' },
+  { key: 'Approved', label: 'Onaylandı' },
+  { key: 'Rejected', label: 'Reddedildi' },
 ];
 
 const STATUS_MAP = {
-  pending:  { label: 'Beklemede',  cls: 'bg-amber-50 text-amber-700',   icon: Clock,         dot: 'bg-amber-400'  },
-  approved: { label: 'Onaylandı', cls: 'bg-emerald-50 text-emerald-700', icon: CheckCircle2, dot: 'bg-emerald-500' },
-  rejected: { label: 'Reddedildi', cls: 'bg-red-50 text-red-600',       icon: XCircle,       dot: 'bg-red-400'    },
+  Pending:  { label: 'Beklemede',  cls: 'bg-amber-50 text-amber-700',   icon: Clock,         dot: 'bg-amber-400'  },
+  Approved: { label: 'Onaylandı',  cls: 'bg-emerald-50 text-emerald-700', icon: CheckCircle2, dot: 'bg-emerald-500' },
+  Rejected: { label: 'Reddedildi', cls: 'bg-red-50 text-red-600',       icon: XCircle,       dot: 'bg-red-400'    },
 };
 
+function timeAgo(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Az önce';
+  if (mins < 60) return `${mins} dk önce`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} saat önce`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days} gün önce`;
+  return new Date(dateStr).toLocaleDateString('tr-TR');
+}
+
 export default function RequestsPage() {
-  const pending  = MOCK_REQUESTS.filter(r => r.status === 'pending').length;
-  const approved = MOCK_REQUESTS.filter(r => r.status === 'approved').length;
-  const rejected = MOCK_REQUESTS.filter(r => r.status === 'rejected').length;
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('');
+  const [expandedMsg, setExpandedMsg] = useState(null);
+
+  const { data: requests = [], isLoading } = useAllClientRequests(activeTab || undefined);
+  const { data: allRequests = [] } = useAllClientRequests();
+  const reviewRequest = useReviewClientRequest();
+
+  const pending  = allRequests.filter(r => r.status === 'Pending').length;
+  const approved = allRequests.filter(r => r.status === 'Approved').length;
+  const rejected = allRequests.filter(r => r.status === 'Rejected').length;
+
+  const handleReview = (id, action) => {
+    reviewRequest.mutate({ id, data: { action } });
+  };
 
   return (
     <div className="space-y-5">
@@ -31,9 +62,11 @@ export default function RequestsPage() {
             <p className="text-sm text-slate-500">Müşterilerden gelen talep ve revizyon istekleri</p>
           </div>
         </div>
-        <span className="text-xs bg-amber-100 text-amber-700 font-bold px-3 py-1.5 rounded-full">
-          Yakında
-        </span>
+        {pending > 0 && (
+          <span className="text-xs bg-amber-100 text-amber-700 font-bold px-3 py-1.5 rounded-full">
+            {pending} bekleyen
+          </span>
+        )}
       </div>
 
       {/* KPI */}
@@ -50,51 +83,123 @@ export default function RequestsPage() {
         ))}
       </div>
 
-      {/* Coming-soon banner */}
-      <div className="bg-brand-50 border border-brand-100 rounded-2xl p-6 flex items-center gap-4">
-        <div className="w-12 h-12 bg-brand-100 rounded-xl flex items-center justify-center flex-shrink-0">
-          <MessageSquare size={22} className="text-brand-600" />
-        </div>
-        <div>
-          <p className="font-semibold text-brand-900 mb-0.5">İstekler modülü geliştiriliyor</p>
-          <p className="text-sm text-brand-700">
-            Müşterilerinizin proje revizyonlarını ve yeni taleplerini buradan yönetebileceksiniz.
-            Bu özellik yakında aktif olacak.
-          </p>
-        </div>
+      {/* Filtre sekmeleri */}
+      <div className="flex gap-2 flex-wrap">
+        {STATUS_TABS.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+              activeTab === tab.key
+                ? 'bg-brand-600 text-white shadow-sm'
+                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      {/* Örnek liste */}
+      {/* Liste */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h2 className="font-bold text-slate-900 text-sm">Örnek Kayıtlar (Demo)</h2>
-          <span className="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded-full">{MOCK_REQUESTS.length} istek</span>
+          <h2 className="font-bold text-slate-900 text-sm">
+            {activeTab ? STATUS_MAP[activeTab]?.label ?? 'İstekler' : 'Tüm İstekler'}
+          </h2>
+          <span className="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded-full">
+            {requests.length} istek
+          </span>
         </div>
-        <ul className="divide-y divide-slate-50">
-          {MOCK_REQUESTS.map(r => {
-            const s = STATUS_MAP[r.status];
-            const Icon = s.icon;
-            return (
-              <li key={r.id} className="px-5 py-4 flex items-start gap-3 hover:bg-slate-50 transition-colors">
-                <span className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${s.dot}`} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <p className="text-sm font-semibold text-slate-800 truncate">{r.title}</p>
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${s.cls}`}>
-                      {s.label}
-                    </span>
+
+        {isLoading ? (
+          <div className="flex justify-center py-16">
+            <Loader2 size={28} className="animate-spin text-brand-500" />
+          </div>
+        ) : requests.length === 0 ? (
+          <div className="px-5 py-16 text-center text-slate-400 text-sm">
+            {activeTab === 'Pending'
+              ? 'Bekleyen müşteri isteği yok.'
+              : 'Bu filtrede istek bulunamadı.'}
+          </div>
+        ) : (
+          <ul className="divide-y divide-slate-50">
+            {requests.map(req => {
+              const s = STATUS_MAP[req.status] ?? STATUS_MAP.Pending;
+              const Icon = s.icon;
+              const isPending = req.status === 'Pending';
+
+              return (
+                <li key={req.id} className="px-5 py-4 hover:bg-slate-50 transition-colors">
+                  <div className="flex items-start gap-3">
+                    <span className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${s.dot}`} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-3 mb-1">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-800">{req.summarizedTodo}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            {req.projectName} · {req.customerName} · {timeAgo(req.requestedAt)}
+                          </p>
+                          <RequestAiHints request={req} />
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${s.cls}`}>
+                            {s.label}
+                          </span>
+                          <Icon size={14} className={
+                            req.status === 'Approved' ? 'text-emerald-500'
+                              : req.status === 'Rejected' ? 'text-red-400'
+                              : 'text-amber-500'
+                          } />
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => setExpandedMsg(expandedMsg === req.id ? null : req.id)}
+                        className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 mt-2"
+                      >
+                        {expandedMsg === req.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                        {expandedMsg === req.id ? 'Orijinal mesajı gizle' : 'Orijinal mesajı göster'}
+                      </button>
+                      {expandedMsg === req.id && (
+                        <div className="bg-slate-50 rounded-xl p-3 mt-2 text-xs text-slate-600 whitespace-pre-wrap">
+                          {req.originalMessage}
+                        </div>
+                      )}
+
+                      <div className="flex gap-2 mt-3 flex-wrap">
+                        {isPending && (
+                          <>
+                            <button
+                              onClick={() => handleReview(req.id, 'approve')}
+                              disabled={reviewRequest.isPending}
+                              className="bg-emerald-600 text-white rounded-lg px-4 py-1.5 text-xs font-medium hover:bg-emerald-700 disabled:opacity-50"
+                            >
+                              Onayla
+                            </button>
+                            <button
+                              onClick={() => handleReview(req.id, 'reject')}
+                              disabled={reviewRequest.isPending}
+                              className="bg-red-500 text-white rounded-lg px-4 py-1.5 text-xs font-medium hover:bg-red-600 disabled:opacity-50"
+                            >
+                              Reddet
+                            </button>
+                          </>
+                        )}
+                        <button
+                          onClick={() => navigate(`/dashboard/projects/${req.projectId}/kanban`)}
+                          className="flex items-center gap-1 bg-slate-100 text-slate-700 rounded-lg px-4 py-1.5 text-xs font-medium hover:bg-slate-200 transition-colors"
+                        >
+                          <ExternalLink size={12} />
+                          Projeye Git
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-xs text-slate-400">{r.project} · {r.client}</p>
-                  {r.note && <p className="text-xs text-slate-500 mt-1 italic">"{r.note}"</p>}
-                </div>
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <Icon size={14} className={r.status === 'approved' ? 'text-emerald-500' : r.status === 'rejected' ? 'text-red-400' : 'text-amber-500'} />
-                  <span className="text-xs text-slate-400">{new Date(r.date).toLocaleDateString('tr-TR')}</span>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
     </div>
   );

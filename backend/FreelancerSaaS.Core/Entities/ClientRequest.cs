@@ -13,6 +13,9 @@ namespace FreelancerSaaS.Core.Entities
         public Guid   CustomerId        { get; set; }
         public string OriginalMessage   { get; set; } = string.Empty;
         public string SummarizedTodo    { get; set; } = string.Empty;
+        public string? SuggestedPriority { get; set; }
+        public string? ClientPreview     { get; set; }
+        public string? AiMetadataJson    { get; set; }
         public ClientRequestStatus Status { get; set; } = ClientRequestStatus.Pending;
         public Guid?  ApprovedTaskId    { get; set; }
         public DateTime  RequestedAt    { get; set; } = DateTime.UtcNow;

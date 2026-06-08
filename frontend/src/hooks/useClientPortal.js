@@ -1,11 +1,12 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query';
 import { clientPortalService } from '../services/clientPortalService';
 
-export const useMyProfile = () =>
+export const useMyProfile = (options = {}) =>
   useQuery({
     queryKey: ['cp-profile'],
     queryFn: clientPortalService.getMyProfile,
     staleTime: 1000 * 60 * 5,
+    ...options,
   });
 
 export const useMyProjects = () =>
@@ -59,11 +60,19 @@ export const useInvoiceAction = () => {
   });
 };
 
+export const usePreviewRequest = (projectId) =>
+  useMutation({
+    mutationFn: (message) => clientPortalService.previewRequest(projectId, message),
+  });
+
 export const useSendRequest = (projectId) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (message) => clientPortalService.sendRequest(projectId, message),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['cp-requests', projectId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['cp-requests', projectId] });
+      qc.invalidateQueries({ queryKey: ['cp-projects'] });
+    },
   });
 };
 
@@ -73,3 +82,30 @@ export const useMyRequests = (projectId) =>
     queryFn: () => clientPortalService.getMyRequests(projectId),
     enabled: !!projectId,
   });
+
+/** Tüm projelerdeki istekleri tek listede döner (client portal global sayfa) */
+export const useAllMyRequests = () => {
+  const { data: projects = [], isLoading: projectsLoading } = useMyProjects();
+
+  const requestQueries = useQueries({
+    queries: projects.map((p) => ({
+      queryKey: ['cp-requests', p.id],
+      queryFn: () => clientPortalService.getMyRequests(p.id),
+      enabled: !!p.id,
+    })),
+  });
+
+  const requestsLoading = requestQueries.some((q) => q.isLoading);
+  const allRequests = projects.flatMap((p, i) =>
+    (requestQueries[i]?.data ?? []).map((r) => ({
+      ...r,
+      projectName: p.name,
+    }))
+  ).sort((a, b) => new Date(b.requestedAt) - new Date(a.requestedAt));
+
+  return {
+    data: allRequests,
+    projects,
+    isLoading: projectsLoading || requestsLoading,
+  };
+};

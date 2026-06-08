@@ -41,6 +41,9 @@ export const clientPortalApi = {
   sendRequest: (projectId, message) =>
     api.post(`${BASE}/projects/${projectId}/requests`, { projectId, message }).then(r => r.data),
 
+  previewRequest: (projectId, message) =>
+    api.post(`${BASE}/projects/${projectId}/requests/preview`, { message }).then(r => r.data),
+
   getMyRequests: (projectId) =>
     api.get(`${BASE}/projects/${projectId}/requests`).then(r => r.data),
 };

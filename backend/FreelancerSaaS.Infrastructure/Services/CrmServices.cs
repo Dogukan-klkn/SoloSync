@@ -1043,29 +1043,48 @@ namespace FreelancerSaaS.Infrastructure.Services
         public async Task<IEnumerable<ClientRequestResponse>> GetByProjectAsync(Guid projectId, Guid userId, string? status = null)
         {
             var requests = await _repo.GetByProjectIdAsync(projectId, status);
-            return requests.Select(MapToResponse);
+            return requests.Select(ClientRequestMapper.MapToResponse);
+        }
+
+        public async Task<IEnumerable<ClientRequestResponse>> GetAllAsync(Guid freelancerId, string? status = null)
+        {
+            var requests = await _repo.GetAllByFreelancerIdAsync(freelancerId, status);
+            return requests.Select(ClientRequestMapper.MapToResponse);
         }
 
         public async Task<ClientRequestResponse> CreateAsync(CreateClientRequestRequest req, Guid userId)
         {
+            // Client portal: Customer.ClientUserId — freelancer CRM: Customer.UserId
             var customer = await _context.Customers
-                .FirstOrDefaultAsync(c => c.UserId == userId);
+                .FirstOrDefaultAsync(c => c.ClientUserId == userId)
+                ?? await _context.Customers.FirstOrDefaultAsync(c => c.UserId == userId);
 
-            var summarized = await _ai.SummarizeClientRequestAsync(req.Message);
+            if (customer == null)
+                throw new UnauthorizedAccessException("Müşteri kaydı bulunamadı.");
+
+            var belongsToCustomer = await _context.Projects
+                .AnyAsync(p => p.Id == req.ProjectId && p.CustomerId == customer.Id);
+            if (!belongsToCustomer)
+                throw new UnauthorizedAccessException("Bu projeye erişim yetkiniz yok.");
+
+            var analysis = await _ai.AnalyzeClientRequestAsync(req.Message);
 
             var request = new ClientRequest
             {
-                ProjectId       = req.ProjectId,
-                CustomerId      = customer?.Id ?? Guid.Empty,
-                OriginalMessage = req.Message,
-                SummarizedTodo  = summarized,
-                Status          = ClientRequestStatus.Pending,
-                RequestedAt     = DateTime.UtcNow,
+                ProjectId          = req.ProjectId,
+                CustomerId         = customer.Id,
+                OriginalMessage    = LegacyDbText.Sanitize(req.Message),
+                SummarizedTodo     = LegacyDbText.Sanitize(analysis.Summary),
+                SuggestedPriority  = analysis.Priority,
+                ClientPreview      = LegacyDbText.Sanitize(analysis.ClientPreview),
+                AiMetadataJson     = LegacyDbText.Sanitize(ClientRequestMapper.BuildMetadataJson(analysis)),
+                Status             = ClientRequestStatus.Pending,
+                RequestedAt        = DateTime.UtcNow,
             };
             await _repo.AddAsync(request);
             await _repo.SaveChangesAsync();
 
-            return MapToResponse(await _repo.GetByIdWithDetailsAsync(request.Id) ?? request);
+            return ClientRequestMapper.MapToResponse(await _repo.GetByIdWithDetailsAsync(request.Id) ?? request);
         }
 
         public async Task<ClientRequestResponse> ApproveAsync(Guid requestId, List<TagRequest>? tags, Guid freelancerId)
@@ -1079,16 +1098,14 @@ namespace FreelancerSaaS.Infrastructure.Services
                 Title       = request.SummarizedTodo,
                 Description = request.OriginalMessage[..Math.Min(500, request.OriginalMessage.Length)],
                 Status      = ProjectTaskStatus.Todo,
-                Priority    = ProjectTaskPriority.Medium,
+                Priority    = ClientRequestMapper.MapPriority(request.SuggestedPriority),
                 Order       = 0,
             };
 
             await _taskRepo.AddAsync(task);
             await _taskRepo.SaveChangesAsync();
 
-            // "müşteri-isteği" etiketi + freelancer'ın eklediği etiketler
-            var allTags = new List<TagRequest> { new() { Label = "müşteri-isteği", Color = "#6366f1" } };
-            if (tags != null) allTags.AddRange(tags);
+            var allTags = ClientRequestMapper.BuildApproveTags(request, tags);
 
             for (int i = 0; i < allTags.Count; i++)
             {
@@ -1108,7 +1125,7 @@ namespace FreelancerSaaS.Infrastructure.Services
             _repo.Update(request);
             await _context.SaveChangesAsync();
 
-            return MapToResponse(await _repo.GetByIdWithDetailsAsync(requestId) ?? request);
+            return ClientRequestMapper.MapToResponse(await _repo.GetByIdWithDetailsAsync(requestId) ?? request);
         }
 
         public async Task<ClientRequestResponse> RejectAsync(Guid requestId, Guid freelancerId)
@@ -1122,24 +1139,8 @@ namespace FreelancerSaaS.Infrastructure.Services
             _repo.Update(request);
             await _repo.SaveChangesAsync();
 
-            return MapToResponse(await _repo.GetByIdWithDetailsAsync(requestId) ?? request);
+            return ClientRequestMapper.MapToResponse(await _repo.GetByIdWithDetailsAsync(requestId) ?? request);
         }
-
-        private static ClientRequestResponse MapToResponse(ClientRequest r) => new()
-        {
-            Id              = r.Id,
-            ProjectId       = r.ProjectId,
-            ProjectName     = r.Project?.Name ?? string.Empty,
-            CustomerId      = r.CustomerId,
-            CustomerName    = r.Customer?.CompanyName ?? string.Empty,
-            OriginalMessage = r.OriginalMessage,
-            SummarizedTodo  = r.SummarizedTodo,
-            Status          = r.Status.ToString(),
-            StatusValue     = (int)r.Status,
-            ApprovedTaskId  = r.ApprovedTaskId,
-            RequestedAt     = r.RequestedAt,
-            ReviewedAt      = r.ReviewedAt,
-        };
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1150,12 +1151,18 @@ namespace FreelancerSaaS.Infrastructure.Services
         private readonly ApplicationDbContext _context;
         private readonly IInvoiceService _invoiceService;
         private readonly IClientRequestService _clientRequestService;
+        private readonly IAIService _ai;
 
-        public ClientPortalService(ApplicationDbContext context, IInvoiceService invoiceService, IClientRequestService clientRequestService)
+        public ClientPortalService(
+            ApplicationDbContext context,
+            IInvoiceService invoiceService,
+            IClientRequestService clientRequestService,
+            IAIService ai)
         {
             _context = context;
             _invoiceService = invoiceService;
             _clientRequestService = clientRequestService;
+            _ai = ai;
         }
 
         // clientUserId → hangi Customer'a bağlı?
@@ -1168,19 +1175,35 @@ namespace FreelancerSaaS.Infrastructure.Services
         public async Task<ClientProfileResponse?> GetMyProfileAsync(Guid clientUserId)
         {
             var customer = await FindCustomerAsync(clientUserId);
-            if (customer == null) return null;
-            return new ClientProfileResponse
-            {
-                CustomerId      = customer.Id,
-                CompanyName     = customer.CompanyName,
-                ContactName     = customer.ContactName,
-                Email           = customer.Email,
-                Phone           = customer.Phone,
-                BillingAddress  = customer.BillingAddress,
-                FreelancerName  = customer.User != null ? $"{customer.User.FirstName} {customer.User.LastName}" : string.Empty,
-                FreelancerEmail = customer.User?.Email ?? string.Empty,
-            };
+            return customer == null ? null : MapClientProfile(customer);
         }
+
+        public async Task<ClientProfileResponse> UpdateMyProfileAsync(Guid clientUserId, UpdateClientProfileRequest request)
+        {
+            var customer = await FindCustomerAsync(clientUserId)
+                ?? throw new KeyNotFoundException("Müşteri profili bulunamadı.");
+
+            customer.CompanyName    = request.CompanyName.Trim();
+            customer.ContactName    = request.ContactName.Trim();
+            customer.Phone          = string.IsNullOrWhiteSpace(request.Phone) ? null : request.Phone.Trim();
+            customer.BillingAddress = string.IsNullOrWhiteSpace(request.BillingAddress) ? null : request.BillingAddress.Trim();
+            customer.UpdatedAt      = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            return MapClientProfile(customer);
+        }
+
+        private static ClientProfileResponse MapClientProfile(Customer customer) => new()
+        {
+            CustomerId      = customer.Id,
+            CompanyName     = customer.CompanyName,
+            ContactName     = customer.ContactName,
+            Email           = customer.Email,
+            Phone           = customer.Phone,
+            BillingAddress  = customer.BillingAddress,
+            FreelancerName  = customer.User != null ? $"{customer.User.FirstName} {customer.User.LastName}" : string.Empty,
+            FreelancerEmail = customer.User?.Email ?? string.Empty,
+        };
 
         public async Task<IEnumerable<ProjectResponse>> GetMyProjectsAsync(Guid clientUserId)
         {
@@ -1360,6 +1383,18 @@ namespace FreelancerSaaS.Infrastructure.Services
             return await _clientRequestService.CreateAsync(request, clientUserId);
         }
 
+        public async Task<ClientRequestAnalysisResult> PreviewRequestAsync(string message, Guid projectId, Guid clientUserId)
+        {
+            var customer = await FindCustomerAsync(clientUserId);
+            if (customer == null) throw new UnauthorizedAccessException("Müşteri kaydı bulunamadı.");
+
+            var belongs = await _context.Projects
+                .AnyAsync(p => p.Id == projectId && p.CustomerId == customer.Id);
+            if (!belongs) throw new UnauthorizedAccessException("Bu projeye erişim yetkiniz yok.");
+
+            return await _ai.AnalyzeClientRequestAsync(message);
+        }
+
         public async Task<IEnumerable<ClientRequestResponse>> GetMyRequestsAsync(Guid projectId, Guid clientUserId)
         {
             var customer = await FindCustomerAsync(clientUserId);
@@ -1376,21 +1411,7 @@ namespace FreelancerSaaS.Infrastructure.Services
                 .OrderByDescending(r => r.RequestedAt)
                 .ToListAsync();
 
-            return requests.Select(r => new ClientRequestResponse
-            {
-                Id              = r.Id,
-                ProjectId       = r.ProjectId,
-                ProjectName     = r.Project?.Name ?? string.Empty,
-                CustomerId      = r.CustomerId,
-                CustomerName    = r.Customer?.CompanyName ?? string.Empty,
-                OriginalMessage = r.OriginalMessage,
-                SummarizedTodo  = r.SummarizedTodo,
-                Status          = r.Status.ToString(),
-                StatusValue     = (int)r.Status,
-                ApprovedTaskId  = r.ApprovedTaskId,
-                RequestedAt     = r.RequestedAt,
-                ReviewedAt      = r.ReviewedAt,
-            });
+            return requests.Select(ClientRequestMapper.MapToResponse);
         }
 
         private static ProjectResponse MapProject(Project p) => MapProjectWithPending(p, 0);

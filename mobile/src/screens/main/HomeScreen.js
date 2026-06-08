@@ -2,7 +2,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  ActivityIndicator,
+  ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -124,10 +124,11 @@ const HomeScreen = ({ navigation }) => {
   });
   const [recentProjects, setRecentProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [user, setUser] = useState(null);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  const loadData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const raw = await SecureStore.getItemAsync('user');
       if (raw) setUser(JSON.parse(raw));
@@ -168,10 +169,13 @@ const HomeScreen = ({ navigation }) => {
       console.log('[HomeScreen] loadData error:', e?.message);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
   useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
+
+  const onRefresh = () => { setRefreshing(true); loadData(true); };
 
   const firstName = user?.fullName?.split(' ')[0] ?? 'Freelancer';
   const bottomPad = 88 + Math.max(insets.bottom, 14);
@@ -181,6 +185,7 @@ const HomeScreen = ({ navigation }) => {
       style={styles.container}
       contentContainerStyle={[styles.content, { paddingBottom: bottomPad }]}
       showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0ea5e9" />}
     >
       <View style={styles.header}>
         <View style={styles.headerLeft}>

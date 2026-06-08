@@ -23,6 +23,14 @@ namespace FreelancerSaaS.API.Controllers
             return Ok(result);
         }
 
+        [HttpGet("all")]
+        [Authorize(Policy = "FreelancerOnly")]
+        public async Task<IActionResult> ListAll([FromQuery] string? status)
+        {
+            var result = await _service.GetAllAsync(UserId(), status);
+            return Ok(result);
+        }
+
         [HttpGet]
         public async Task<IActionResult> List([FromQuery] Guid projectId, [FromQuery] string? status)
         {

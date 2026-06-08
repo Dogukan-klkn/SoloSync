@@ -246,6 +246,9 @@ namespace FreelancerSaaS.Infrastructure.Data
                 e.HasKey(r => r.Id);
                 e.Property(r => r.OriginalMessage).IsRequired().HasMaxLength(5000);
                 e.Property(r => r.SummarizedTodo).IsRequired().HasMaxLength(500);
+                e.Property(r => r.SuggestedPriority).HasMaxLength(20);
+                e.Property(r => r.ClientPreview).HasMaxLength(500);
+                e.Property(r => r.AiMetadataJson).HasMaxLength(4000);
                 e.Property(r => r.Status).HasConversion<string>();
 
                 e.HasOne(r => r.Project)

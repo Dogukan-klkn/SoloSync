@@ -72,6 +72,7 @@ namespace FreelancerSaaS.Core.Interfaces
     public interface IClientRequestService
     {
         Task<IEnumerable<ClientRequestResponse>> GetByProjectAsync(Guid projectId, Guid userId, string? status = null);
+        Task<IEnumerable<ClientRequestResponse>> GetAllAsync(Guid freelancerId, string? status = null);
         Task<ClientRequestResponse> CreateAsync(CreateClientRequestRequest request, Guid userId);
         Task<ClientRequestResponse> ApproveAsync(Guid requestId, List<TagRequest>? tags, Guid freelancerId);
         Task<ClientRequestResponse> RejectAsync(Guid requestId, Guid freelancerId);
@@ -81,6 +82,7 @@ namespace FreelancerSaaS.Core.Interfaces
     public interface IClientPortalService
     {
         Task<ClientProfileResponse?> GetMyProfileAsync(Guid clientUserId);
+        Task<ClientProfileResponse> UpdateMyProfileAsync(Guid clientUserId, UpdateClientProfileRequest request);
         Task<IEnumerable<ProjectResponse>> GetMyProjectsAsync(Guid clientUserId);
         Task<ProjectResponse?> GetMyProjectByIdAsync(Guid projectId, Guid clientUserId);
         Task<IEnumerable<MilestoneResponse>> GetMyMilestonesAsync(Guid projectId, Guid clientUserId);
@@ -89,6 +91,7 @@ namespace FreelancerSaaS.Core.Interfaces
         Task<InvoiceResponse?> GetMyInvoiceByIdAsync(Guid invoiceId, Guid clientUserId);
         Task<InvoiceResponse> ClientInvoiceActionAsync(Guid invoiceId, ClientActionRequest request, Guid clientUserId);
         Task<ClientRequestResponse> SendRequestAsync(CreateClientRequestRequest request, Guid clientUserId);
+        Task<ClientRequestAnalysisResult> PreviewRequestAsync(string message, Guid projectId, Guid clientUserId);
         Task<IEnumerable<ClientRequestResponse>> GetMyRequestsAsync(Guid projectId, Guid clientUserId);
     }
 }

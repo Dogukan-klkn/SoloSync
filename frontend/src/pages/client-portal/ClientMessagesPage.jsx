@@ -10,7 +10,9 @@ const ClientMessagesPage = () => (
       <MessageSquare className="w-12 h-12 text-slate-300" />
       <p className="text-slate-500 font-medium">Mesajlaşma yakında geliyor</p>
       <p className="text-slate-400 text-sm text-center max-w-sm">
-        Proje detay sayfasından "İsteklerim" sekmesini kullanarak freelancer'ınıza istek ve geri bildirim gönderebilirsiniz.
+        İstek ve geri bildirimleriniz için{' '}
+        <a href="/client-portal/requests" className="text-violet-600 hover:underline font-medium">İsteklerim</a>
+        {' '}sayfasını veya proje detayındaki İsteklerim sekmesini kullanabilirsiniz.
       </p>
     </div>
   </div>

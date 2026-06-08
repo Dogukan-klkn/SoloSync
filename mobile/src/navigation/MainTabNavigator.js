@@ -1,9 +1,10 @@
 // src/navigation/MainTabNavigator.js
-import React from 'react';
-import { Text } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Text, DeviceEventEmitter } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { clientRequestApi } from '../services/clientRequestApi';
 
 import HomeScreen from '../screens/main/HomeScreen';
 import SettingsScreen from '../screens/main/SettingsScreen';
@@ -115,6 +116,22 @@ function InvoiceStack() {
 export default function MainTabNavigator() {
   const insets = useSafeAreaInsets();
   const bottomPad = Math.max(insets.bottom, 14);
+  const [pendingRequestCount, setPendingRequestCount] = useState(0);
+
+  const loadPendingCount = useCallback(async () => {
+    try {
+      const { data } = await clientRequestApi.getAll('Pending');
+      setPendingRequestCount(Array.isArray(data) ? data.length : 0);
+    } catch {
+      setPendingRequestCount(0);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadPendingCount();
+    const sub = DeviceEventEmitter.addListener('requestsUpdated', loadPendingCount);
+    return () => sub.remove();
+  }, [loadPendingCount]);
 
   return (
     <Tab.Navigator
@@ -214,6 +231,8 @@ export default function MainTabNavigator() {
           title: 'İstekler',
           tabBarLabel: 'İstekler',
           tabBarIcon: ({ focused, size }) => <TabIcon emoji="📨" focused={focused} size={size} />,
+          tabBarBadge: pendingRequestCount > 0 ? pendingRequestCount : undefined,
+          tabBarBadgeStyle: { backgroundColor: '#f59e0b', fontSize: 10 },
           headerShown: true,
           headerStyle: { backgroundColor: '#0f172a' },
           headerTintColor: '#fff',

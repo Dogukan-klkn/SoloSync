@@ -29,6 +29,19 @@ namespace FreelancerSaaS.API.Controllers
             return result == null ? NotFound("Müşteri profili bulunamadı.") : Ok(result);
         }
 
+        // PUT api/client-portal/me
+        [HttpPut("me")]
+        public async Task<IActionResult> UpdateMyProfile([FromBody] UpdateClientProfileRequest request)
+        {
+            try
+            {
+                var result = await _service.UpdateMyProfileAsync(GetUserId(), request);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex) { return NotFound(ex.Message); }
+            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+        }
+
         // GET api/client-portal/projects
         [HttpGet("projects")]
         public async Task<IActionResult> GetMyProjects()
@@ -110,6 +123,18 @@ namespace FreelancerSaaS.API.Controllers
         {
             var result = await _service.GetMyRequestsAsync(id, GetUserId());
             return Ok(result);
+        }
+
+        // POST api/client-portal/projects/{id}/requests/preview — göndermeden AI önizleme
+        [HttpPost("projects/{id:guid}/requests/preview")]
+        public async Task<IActionResult> PreviewRequest(Guid id, [FromBody] PreviewClientRequestRequest request)
+        {
+            try
+            {
+                var result = await _service.PreviewRequestAsync(request.Message, id, GetUserId());
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
         }
     }
 }

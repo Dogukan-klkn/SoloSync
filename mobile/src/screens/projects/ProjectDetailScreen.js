@@ -2,7 +2,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, TextInput,
+  ActivityIndicator, Alert, TextInput, RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { projectApi } from '../../services/projectApi';
@@ -19,12 +19,13 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const [project,        setProject]        = useState(null);
   const [milestones,     setMilestones]     = useState([]);
   const [loading,        setLoading]        = useState(false);
+  const [refreshing,     setRefreshing]     = useState(false);
   const [milestoneTitle, setMilestoneTitle] = useState('');
   const [adding,         setAdding]         = useState(false);
   const [showDetails,    setShowDetails]    = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [pRes, mRes] = await Promise.all([
         projectApi.getById(projectId),
@@ -32,11 +33,16 @@ export default function ProjectDetailScreen({ route, navigation }) {
       ]);
       setProject(pRes.data);
       setMilestones(mRes.data);
-    } catch { Alert.alert('Hata', 'Proje yüklenemedi.'); }
-    finally  { setLoading(false); }
+    } catch { if (!silent) Alert.alert('Hata', 'Proje yüklenemedi.'); }
+    finally  {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, [projectId]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const onRefresh = () => { setRefreshing(true); load(true); };
 
   const handleAdd = async () => {
     if (!milestoneTitle.trim()) return;
@@ -53,7 +59,9 @@ export default function ProjectDetailScreen({ route, navigation }) {
     finally  { setAdding(false); }
   };
 
-  if (loading || !project) return <ActivityIndicator size="large" color="#0ea5e9" style={{ marginTop: 60 }} />;
+  if ((loading && !refreshing) || !project) {
+    return <ActivityIndicator size="large" color="#0ea5e9" style={{ marginTop: 60 }} />;
+  }
 
   const st           = STATUS[project.status] ?? STATUS.Pending;
   const progress     = project.progressPercentage ?? 0;
@@ -63,7 +71,11 @@ export default function ProjectDetailScreen({ route, navigation }) {
   const doneMs       = project.completedMilestoneCount ?? milestones.filter(m => m.totalTasks > 0 && m.completedTasks === m.totalTasks).length;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0ea5e9" />}
+    >
 
       {/* ── Başlık Kartı ── */}
       <View style={styles.card}>

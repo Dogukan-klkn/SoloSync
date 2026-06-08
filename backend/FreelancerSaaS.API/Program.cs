@@ -4,7 +4,9 @@ using FluentValidation.AspNetCore;
 using FreelancerSaaS.Core.Interfaces;
 using FreelancerSaaS.Infrastructure.Data;
 using FreelancerSaaS.Infrastructure.Repositories;
+using FreelancerSaaS.Core.Configuration;
 using FreelancerSaaS.Infrastructure.Services;
+using FreelancerSaaS.Infrastructure.Services.AI;
 using FreelancerSaaS.API.Middleware;
 using FreelancerSaaS.API.Validators;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -42,8 +44,12 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // ─── Database ─────────────────────────────────────────────
+var dbConnection = builder.Configuration.GetConnectionString("DefaultConnection");
+if (!dbConnection!.Contains("client encoding", StringComparison.OrdinalIgnoreCase))
+    dbConnection += ";Options=-c client_encoding=UTF8";
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(dbConnection));
 
 // ─── JWT Authentication ───────────────────────────────────
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -116,7 +122,24 @@ builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IClientRequestService, ClientRequestService>();
 builder.Services.AddScoped<IClientPortalService, ClientPortalService>();
-builder.Services.AddHttpClient<IAIService, AIService>();
+
+// ─── AI (sağlayıcıdan bağımsız) ───────────────────────────
+builder.Services.Configure<AiSettings>(builder.Configuration.GetSection("AISettings"));
+builder.Services.PostConfigure<AiSettings>(opts =>
+{
+    // Eski AnthropicSettings anahtarını destekle
+    var legacyKey   = builder.Configuration["AnthropicSettings:ApiKey"];
+    var legacyModel = builder.Configuration["AnthropicSettings:Model"];
+    if (string.IsNullOrWhiteSpace(opts.Anthropic.ApiKey) && !string.IsNullOrWhiteSpace(legacyKey))
+        opts.Anthropic.ApiKey = legacyKey;
+    if (!string.IsNullOrWhiteSpace(legacyModel))
+        opts.Anthropic.Model = legacyModel;
+});
+builder.Services.AddHttpClient();
+foreach (var name in new[] { "groq", "openai", "ollama", "gemini", "anthropic" })
+    builder.Services.AddHttpClient($"ai-{name}");
+builder.Services.AddSingleton<AIProviderFactory>();
+builder.Services.AddScoped<IAIService, AIService>();
 
 // ─── FluentValidation ───────────────────────────────────
 builder.Services.AddFluentValidationAutoValidation();

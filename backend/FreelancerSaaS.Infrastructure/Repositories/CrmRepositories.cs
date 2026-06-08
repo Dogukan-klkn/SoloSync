@@ -214,6 +214,20 @@ namespace FreelancerSaaS.Infrastructure.Repositories
             return await query.OrderByDescending(r => r.RequestedAt).ToListAsync();
         }
 
+        public async Task<IEnumerable<ClientRequest>> GetAllByFreelancerIdAsync(Guid freelancerId, string? status = null)
+        {
+            var query = _context.ClientRequests
+                .Include(r => r.Project).ThenInclude(p => p.Customer)
+                .Include(r => r.Customer)
+                .Where(r => r.Project.Customer.UserId == freelancerId);
+
+            if (!string.IsNullOrWhiteSpace(status) &&
+                Enum.TryParse<ClientRequestStatus>(status, true, out var s))
+                query = query.Where(r => r.Status == s);
+
+            return await query.OrderByDescending(r => r.RequestedAt).ToListAsync();
+        }
+
         public async Task<IEnumerable<ClientRequest>> GetPendingByProjectIdAsync(Guid projectId) =>
             await _context.ClientRequests
                 .Include(r => r.Project)

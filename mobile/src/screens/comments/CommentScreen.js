@@ -6,7 +6,7 @@
 import React, { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
-  StyleSheet, KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
+  StyleSheet, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { commentApi } from '../../services/commentApi';
 import * as SecureStore from 'expo-secure-store';
@@ -16,6 +16,7 @@ export default function CommentScreen({ route, navigation }) {
 
   const [comments,     setComments]     = useState([]);
   const [loading,      setLoading]      = useState(true);
+  const [refreshing,   setRefreshing]   = useState(false);
   const [currentUser,  setCurrentUser]  = useState(null);
   const [newComment,   setNewComment]   = useState('');
   const [sending,      setSending]      = useState(false);
@@ -27,19 +28,25 @@ export default function CommentScreen({ route, navigation }) {
   }, [navigation, title]);
 
   // ── Yorumları yükle
-  const loadComments = useCallback(async (isBackground = false) => {
-    if (!isBackground) setLoading(true);
+  const loadComments = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       let data = [];
       if (taskId)     data = await commentApi.getByTask(taskId);
       else if (invoiceId) data = await commentApi.getByInvoice(invoiceId);
       setComments(Array.isArray(data) ? data : []);
     } catch {
-      if (!isBackground) Alert.alert('Hata', 'Yorumlar yüklenemedi.');
+      if (!silent) Alert.alert('Hata', 'Yorumlar yüklenemedi.');
     } finally {
-      if (!isBackground) setLoading(false);
+      if (!silent) setLoading(false);
+      setRefreshing(false);
     }
   }, [taskId, invoiceId]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadComments(true);
+  }, [loadComments]);
 
   // ── Mevcut kullanıcıyı al
   const loadUser = useCallback(async () => {
@@ -162,7 +169,7 @@ export default function CommentScreen({ route, navigation }) {
         ListEmptyComponent={
           <Text style={styles.emptyText}>Henüz yorum yok. İlk yorumu siz yapın!</Text>
         }
-        // Yeni yorum eklenince listeyi aşağı kaydır
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4c1d95" />}
         onContentSizeChange={() => {}}
         initialNumToRender={20}
       />

@@ -3,7 +3,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Alert, ActivityIndicator, Linking,
+  Alert, ActivityIndicator, Linking, RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { customerApi } from '../../services/customerApi';
@@ -37,11 +37,12 @@ export default function CustomerDetailScreen({ route, navigation }) {
   const [customer, setCustomer] = useState(initial ?? null);
   const [projects, setProjects] = useState([]);
   const [loading,  setLoading]  = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   // Hem müşteri hem projelerini yükle
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const id = customerId ?? initial?.id;
       if (!id) return;
@@ -54,13 +55,16 @@ export default function CustomerDetailScreen({ route, navigation }) {
       // Sadece bu müşteriye ait projeleri filtrele
       setProjects(ps.filter(p => p.customerId === id || p.customerName === c.companyName));
     } catch (e) {
-      Alert.alert('Hata', 'Müşteri bilgileri yüklenemedi.');
+      if (!silent) Alert.alert('Hata', 'Müşteri bilgileri yüklenemedi.');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [customerId, initial?.id]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const onRefresh = () => { setRefreshing(true); load(true); };
 
   const handleDelete = () => {
     Alert.alert(
@@ -94,7 +98,7 @@ export default function CustomerDetailScreen({ route, navigation }) {
     navigation.navigate('CustomerForm', { customer });
   };
 
-  if (loading && !customer) {
+  if (loading && !customer && !refreshing) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#0ea5e9" />
@@ -116,7 +120,11 @@ export default function CustomerDetailScreen({ route, navigation }) {
   ).length;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0ea5e9" />}
+    >
       {/* ─── Başlık kartı ─── */}
       <View style={styles.headerCard}>
         <View style={styles.avatarLg}>

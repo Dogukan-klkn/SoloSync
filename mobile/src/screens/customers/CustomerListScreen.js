@@ -1,6 +1,6 @@
 // src/screens/customers/CustomerListScreen.js
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { customerApi } from '../../services/customerApi';
 
@@ -8,20 +8,24 @@ export default function CustomerListScreen({ navigation }) {
   const [customers, setCustomers] = useState([]);
   const [search, setSearch]       = useState('');
   const [loading, setLoading]     = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const { data } = await customerApi.getAll(search || undefined);
       setCustomers(data);
     } catch (e) {
-      Alert.alert('Hata', 'Müşteriler yüklenemedi.');
+      if (!silent) Alert.alert('Hata', 'Müşteriler yüklenemedi.');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [search]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const onRefresh = () => { setRefreshing(true); load(true); };
 
   const renderItem = ({ item }) => (
     <TouchableOpacity
@@ -55,7 +59,7 @@ export default function CustomerListScreen({ navigation }) {
         onSubmitEditing={load}
       />
 
-      {loading ? (
+      {loading && customers.length === 0 ? (
         <ActivityIndicator size="large" color="#0ea5e9" style={{ marginTop: 40 }} />
       ) : (
         <FlatList
@@ -64,6 +68,7 @@ export default function CustomerListScreen({ navigation }) {
           renderItem={renderItem}
           contentContainerStyle={customers.length === 0 ? styles.emptyContainer : null}
           ListEmptyComponent={<Text style={styles.emptyText}>Henüz müşteri yok</Text>}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0ea5e9" />}
         />
       )}
 

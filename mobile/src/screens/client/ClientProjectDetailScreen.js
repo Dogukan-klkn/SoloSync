@@ -41,6 +41,8 @@ export default function ClientProjectDetailScreen({ route }) {
   // İstek gönderme state
   const [reqMessage, setReqMessage] = useState('');
   const [sending,    setSending]    = useState(false);
+  const [preview,    setPreview]    = useState(null);
+  const [previewing, setPreviewing] = useState(false);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -67,12 +69,27 @@ export default function ClientProjectDetailScreen({ route }) {
 
   const onRefresh = () => { setRefreshing(true); load(true); };
 
+  const handlePreview = async () => {
+    if (!reqMessage.trim()) return;
+    setPreviewing(true);
+    setPreview(null);
+    try {
+      const result = await clientPortalApi.previewRequest(projectId, reqMessage.trim());
+      setPreview(result);
+    } catch {
+      Alert.alert('Hata', 'Önizleme oluşturulamadı.');
+    } finally {
+      setPreviewing(false);
+    }
+  };
+
   const handleSendRequest = async () => {
     if (!reqMessage.trim()) return;
     setSending(true);
     try {
       await clientPortalApi.sendRequest(projectId, reqMessage.trim());
       setReqMessage('');
+      setPreview(null);
       Alert.alert('✅ Gönderildi', 'İsteğiniz freelancer\'ınıza iletildi.');
       // Yeniden yükle
       const reqs = await clientPortalApi.getMyRequests(projectId);
@@ -221,7 +238,7 @@ export default function ClientProjectDetailScreen({ route }) {
                 placeholder="Freelancer'ınıza iletmek istediğiniz isteği veya geri bildirimi yazın..."
                 placeholderTextColor="#94a3b8"
                 value={reqMessage}
-                onChangeText={setReqMessage}
+                onChangeText={(t) => { setReqMessage(t); setPreview(null); }}
                 multiline
                 numberOfLines={4}
                 textAlignVertical="top"
@@ -229,14 +246,29 @@ export default function ClientProjectDetailScreen({ route }) {
               />
               <View style={styles.requestFormFooter}>
                 <Text style={styles.charCount}>{reqMessage.length}/5000</Text>
-                <TouchableOpacity
-                  style={[styles.sendBtn, (!reqMessage.trim() || sending) && styles.sendBtnDisabled]}
-                  onPress={handleSendRequest}
-                  disabled={!reqMessage.trim() || sending}
-                >
-                  <Text style={styles.sendBtnText}>{sending ? 'Gönderiliyor...' : '📤 Gönder'}</Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TouchableOpacity
+                    style={[styles.previewBtn, (!reqMessage.trim() || previewing) && styles.sendBtnDisabled]}
+                    onPress={handlePreview}
+                    disabled={!reqMessage.trim() || previewing}
+                  >
+                    <Text style={styles.previewBtnText}>{previewing ? '...' : '✨ Önizle'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.sendBtn, (!reqMessage.trim() || sending) && styles.sendBtnDisabled]}
+                    onPress={handleSendRequest}
+                    disabled={!reqMessage.trim() || sending}
+                  >
+                    <Text style={styles.sendBtnText}>{sending ? 'Gönderiliyor...' : '📤 Gönder'}</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
+              {preview && (
+                <View style={styles.aiPreviewBox}>
+                  <Text style={styles.aiPreviewTitle}>✨ İsteğiniz şöyle anlaşıldı</Text>
+                  <Text style={styles.aiPreviewText}>{preview.clientPreview || preview.summary}</Text>
+                </View>
+              )}
             </View>
 
             {/* Geçmiş istekler */}
@@ -324,9 +356,14 @@ const styles = StyleSheet.create({
   requestInput:        { borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 10, padding: 12, fontSize: 14, color: '#1e293b', minHeight: 100, backgroundColor: '#f8fafc' },
   requestFormFooter:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
   charCount:           { fontSize: 11, color: '#94a3b8' },
+  previewBtn:          { backgroundColor: '#ede9fe', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10 },
+  previewBtnText:      { color: '#6d28d9', fontWeight: '700', fontSize: 13 },
   sendBtn:             { backgroundColor: '#7c3aed', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
   sendBtnDisabled:     { opacity: 0.4 },
   sendBtnText:         { color: '#fff', fontWeight: '700', fontSize: 14 },
+  aiPreviewBox:        { marginTop: 12, padding: 12, backgroundColor: '#f5f3ff', borderRadius: 10, borderLeftWidth: 3, borderLeftColor: '#7c3aed' },
+  aiPreviewTitle:      { fontSize: 12, fontWeight: '700', color: '#5b21b6', marginBottom: 4 },
+  aiPreviewText:       { fontSize: 13, color: '#4c1d95', lineHeight: 18 },
   requestCard:         { backgroundColor: '#fff', borderRadius: 14, padding: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 },
   requestCardHeader:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   requestStatusBadge:  { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },

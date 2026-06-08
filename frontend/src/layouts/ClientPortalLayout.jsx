@@ -4,8 +4,9 @@ import { useAuth } from '../store/authStore';
 import { useMyProfile, useMyProjects } from '../hooks/useClientPortal';
 import {
   LayoutDashboard, FolderOpen, FileText, MessageSquare,
-  Menu, X, LogOut, ChevronRight, Bell, Send
+  Menu, PanelLeftClose, LogOut, ChevronRight, Bell, Send
 } from 'lucide-react';
+import ProfileMenu from '../components/profile/ProfileMenu';
 
 const NAV_ITEMS = [
   { to: '/client-portal',          label: 'Özet',         icon: LayoutDashboard, exact: true },
@@ -140,16 +141,18 @@ const ClientPortalLayout = () => {
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="text-slate-400 hover:text-slate-700 transition"
+            aria-label={sidebarOpen ? 'Kenar çubuğunu daralt' : 'Kenar çubuğunu genişlet'}
           >
-            {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {sidebarOpen ? <PanelLeftClose className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
           <div className="flex-1" />
-          <button className="text-slate-400 hover:text-slate-700 transition relative">
+          <button type="button" className="text-slate-400 hover:text-slate-700 transition relative" aria-label="Bildirimler">
             <Bell className="w-5 h-5" />
           </button>
-          <div className="w-8 h-8 bg-violet-100 rounded-full flex items-center justify-center text-violet-700 text-sm font-bold">
-            {user?.fullName?.[0] ?? 'M'}
-          </div>
+          <ProfileMenu
+            variant="client"
+            subtitle={profile?.companyName ?? 'Müşteri'}
+          />
         </header>
 
         {/* Page content */}

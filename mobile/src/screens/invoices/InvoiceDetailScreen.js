@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useLayoutEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, TextInput,
+  ActivityIndicator, Alert, TextInput, RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { invoiceApi } from '../../services/invoiceApi';
@@ -32,6 +32,7 @@ export default function InvoiceDetailScreen({ route, navigation }) {
 
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [acting, setActing] = useState(false);
 
   const [newDesc, setNewDesc] = useState('');
@@ -46,19 +47,22 @@ export default function InvoiceDetailScreen({ route, navigation }) {
   });
   const [showPayForm, setShowPayForm] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const { data } = await invoiceApi.getById(invoiceId);
       setInvoice(data);
     } catch {
-      setInvoice(null);
+      if (!silent) setInvoice(null);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [invoiceId]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const onRefresh = () => { setRefreshing(true); load(true); };
 
   useLayoutEffect(() => {
     if (title) navigation.setOptions({ title });
@@ -263,7 +267,7 @@ export default function InvoiceDetailScreen({ route, navigation }) {
     ]);
   };
 
-  if (loading) return <ActivityIndicator size="large" color="#0ea5e9" style={{ marginTop: 60 }} />;
+  if (loading && !refreshing) return <ActivityIndicator size="large" color="#0ea5e9" style={{ marginTop: 60 }} />;
   if (!invoice) {
     return (
       <View style={styles.center}>
@@ -280,7 +284,11 @@ export default function InvoiceDetailScreen({ route, navigation }) {
   const isSent = invoice.status === 'Sent';
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0ea5e9" />}
+    >
       <View style={styles.headerCard}>
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>
