@@ -42,9 +42,19 @@ namespace FreelancerSaaS.API.Controllers
         [Authorize(Policy = "FreelancerOnly")]
         public async Task<IActionResult> Create([FromBody] CreateCustomerRequest request)
         {
-            // FluentValidation başarısız olursa buraya ulaşmadan 400 döner
-            var result = await _service.CreateCustomerAsync(request, GetUserId());
-            return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+            try
+            {
+                var result = await _service.CreateCustomerAsync(request, GetUserId());
+                return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+            }
+            catch (DbUpdateException)
+            {
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message    = "Girilen Müşteri Portal Kullanıcı ID sistemde kayıtlı bir kullanıcıya ait değil. Lütfen geçerli bir ID giriniz."
+                });
+            }
         }
 
         // PUT api/customers/{id} — Sadece Freelancer güncelleyebilir
@@ -52,8 +62,20 @@ namespace FreelancerSaaS.API.Controllers
         [Authorize(Policy = "FreelancerOnly")]
         public async Task<IActionResult> Update(Guid id, [FromBody] UpdateCustomerRequest request)
         {
-            var result = await _service.UpdateCustomerAsync(id, request, GetUserId());
-            return Ok(result);
+            try
+            {
+                var result = await _service.UpdateCustomerAsync(id, request, GetUserId());
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (DbUpdateException)
+            {
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message    = "Girilen Müşteri Portal Kullanıcı ID sistemde kayıtlı bir kullanıcıya ait değil. Lütfen geçerli bir ID giriniz."
+                });
+            }
         }
 
         // DELETE api/customers/{id} — Sadece Freelancer silebilir

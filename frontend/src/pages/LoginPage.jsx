@@ -29,7 +29,7 @@ const LoginPage = () => {
       const { data } = await authService.login(formData);
       // Backend camelCase dönüyor: accessToken, refreshToken, email, fullName, role
       login(
-        { email: data.email, fullName: data.fullName, role: data.role },
+        { id: data.id, email: data.email, fullName: data.fullName, role: data.role },
         data.accessToken,
         data.refreshToken
       );

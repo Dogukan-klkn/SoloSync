@@ -84,7 +84,8 @@ namespace FreelancerSaaS.Infrastructure.Services
 
             return new AuthResponse
             {
-                AccessToken = accessToken,
+                Id           = user.Id,
+                AccessToken  = accessToken,
                 RefreshToken = refreshToken,
                 Email        = user.Email,
                 FullName     = $"{user.FirstName} {user.LastName}",

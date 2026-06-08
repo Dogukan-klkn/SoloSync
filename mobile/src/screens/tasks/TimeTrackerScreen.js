@@ -326,18 +326,20 @@ export default function TimeTrackerScreen() {
                   const pPct  = Math.round(pct * 100);
                   return (
                     <View key={p.projectId} style={styles.analyticsRow}>
-                      <View style={styles.analyticsHeader}>
-                        <View style={styles.groupHeaderLeft}>
-                          <View style={[styles.groupDot, { backgroundColor: color }]} />
-                          <Text style={styles.analyticsName} numberOfLines={1}>{p.projectName}</Text>
-                        </View>
-                        <View style={styles.analyticsRight}>
-                          <Text style={styles.analyticsDuration}>{formatDuration(p.totalSeconds)}</Text>
-                          <Text style={styles.analyticsPct}>{pPct}%</Text>
-                        </View>
+                      {/* Proje adı + renkli nokta */}
+                      <View style={styles.analyticsLabelRow}>
+                        <View style={[styles.groupDot, { backgroundColor: color }]} />
+                        <Text style={styles.analyticsName} numberOfLines={1} ellipsizeMode="tail">
+                          {p.projectName}
+                        </Text>
                       </View>
-                      <View style={styles.analyticsBar}>
-                        <View style={[styles.analyticsBarFill, { width: `${pPct}%`, backgroundColor: color }]} />
+                      {/* Bar + sağda süre + yüzde */}
+                      <View style={styles.analyticsBarRow}>
+                        <View style={styles.analyticsBar}>
+                          <View style={[styles.analyticsBarFill, { width: `${pPct}%`, backgroundColor: color }]} />
+                        </View>
+                        <Text style={styles.analyticsDuration}>{formatDuration(p.totalSeconds)}</Text>
+                        <Text style={styles.analyticsPct}>{pPct}%</Text>
                       </View>
                     </View>
                   );
@@ -444,14 +446,16 @@ const styles = StyleSheet.create({
   deleteText:    { fontSize: 12, color: '#ef4444' },
 
   // Analytics
-  analyticsRow:      { marginBottom: 12 },
-  analyticsHeader:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  analyticsName:     { fontSize: 13, fontWeight: '600', color: '#1e293b', flex: 1, marginLeft: 8 },
-  analyticsRight:    { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  analyticsDuration: { fontFamily: 'monospace', fontSize: 13, fontWeight: '700', color: '#1e293b' },
-  analyticsPct:      { fontSize: 12, color: '#94a3b8', minWidth: 32, textAlign: 'right' },
-  analyticsBar:      { height: 8, backgroundColor: '#e2e8f0', borderRadius: 4, overflow: 'hidden' },
-  analyticsBarFill:  { height: '100%', borderRadius: 4 },
+  analyticsRow:        { marginBottom: 14 },
+  // Üst satır: renkli nokta + proje adı (tek satır, truncate)
+  analyticsLabelRow:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+  analyticsName:       { fontSize: 13, fontWeight: '600', color: '#1e293b', flex: 1 },
+  // Alt satır: progress bar + süre + yüzde
+  analyticsBarRow:     { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  analyticsBar:        { flex: 1, height: 8, backgroundColor: '#e2e8f0', borderRadius: 4, overflow: 'hidden' },
+  analyticsBarFill:    { height: '100%', borderRadius: 4 },
+  analyticsDuration:   { fontFamily: 'monospace', fontSize: 12, fontWeight: '700', color: '#1e293b', minWidth: 64, textAlign: 'right' },
+  analyticsPct:        { fontSize: 12, color: '#94a3b8', minWidth: 34, textAlign: 'right' },
   analyticsTotalRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
   analyticsTotalLabel:{ fontSize: 13, fontWeight: '700', color: '#475569' },
   analyticsTotalValue:{ fontFamily: 'monospace', fontSize: 14, fontWeight: '800', color: '#1e293b' },

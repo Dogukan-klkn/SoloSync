@@ -1,8 +1,9 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMyProfile, useMyProjects, useMyInvoices } from '../../hooks/useClientPortal';
 import { useAuth } from '../../store/authStore';
 import {
-  FolderOpen, FileText, CheckCircle2, Clock, AlertTriangle, TrendingUp, Send, ChevronRight
+  FolderOpen, FileText, CheckCircle2, AlertTriangle, TrendingUp, Send, ChevronRight, Copy, CheckCheck
 } from 'lucide-react';
 
 const statusLabel = {
@@ -46,13 +47,7 @@ const ClientHomePage = () => {
 
   if (!profile) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 gap-3">
-        <AlertTriangle className="w-10 h-10 text-amber-400" />
-        <p className="text-slate-600 font-medium">Müşteri profiliniz bulunamadı.</p>
-        <p className="text-slate-400 text-sm text-center max-w-sm">
-          Freelancer'ınızın sizi sistemde bir müşteri hesabına bağlaması gerekiyor. Lütfen iletişime geçin.
-        </p>
-      </div>
+      <UnlinkedClientView userId={user?.id} />
     );
   }
 
@@ -220,5 +215,89 @@ const KpiCard = ({ label, value, icon, bg, alert }) => (
     </div>
   </div>
 );
+
+const UnlinkedClientView = ({ userId }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    if (!userId) return;
+    navigator.clipboard.writeText(userId).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[70vh] gap-6 p-6">
+      {/* İkon */}
+      <div className="w-20 h-20 bg-amber-50 rounded-2xl flex items-center justify-center">
+        <AlertTriangle className="w-10 h-10 text-amber-500" />
+      </div>
+
+      {/* Başlık */}
+      <div className="text-center max-w-md">
+        <h2 className="text-xl font-bold text-slate-800 mb-2">Hesabınız henüz bağlanmadı</h2>
+        <p className="text-slate-500 text-sm leading-relaxed">
+          Freelancer'ınızın sizi sistemde bir müşteri hesabına bağlaması gerekiyor.
+          Aşağıdaki <span className="font-semibold text-violet-600">Portal Kullanıcı ID</span>'nizi
+          freelancer'ınızla paylaşın.
+        </p>
+      </div>
+
+      {/* ID Kartı */}
+      {userId ? (
+        <div className="w-full max-w-md bg-white border-2 border-violet-200 rounded-2xl p-5 shadow-sm">
+          <p className="text-xs font-semibold text-violet-500 uppercase tracking-widest mb-2">Portal Kullanıcı ID</p>
+          <div className="flex items-center gap-3">
+            <code className="flex-1 text-sm font-mono text-slate-700 bg-slate-50 rounded-lg px-3 py-2.5 border border-slate-200 break-all select-all">
+              {userId}
+            </code>
+            <button
+              onClick={handleCopy}
+              className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                copied
+                  ? 'bg-green-500 text-white shadow-green-200 shadow-sm'
+                  : 'bg-violet-500 hover:bg-violet-600 text-white shadow-violet-200 shadow-sm hover:shadow-md'
+              }`}
+            >
+              {copied ? (
+                <><CheckCheck className="w-4 h-4" /> Kopyalandı!</>
+              ) : (
+                <><Copy className="w-4 h-4" /> Kopyala</>
+              )}
+            </button>
+          </div>
+          <p className="text-xs text-slate-400 mt-2.5">
+            Bu ID'yi freelancer'ınıza gönderin. Freelancer bu ID'yi "Müşteri Portal Kullanıcı ID" alanına girecek.
+          </p>
+        </div>
+      ) : (
+        <div className="w-full max-w-md bg-slate-50 border border-slate-200 rounded-xl p-4 text-center text-sm text-slate-400">
+          Kullanıcı ID alınamadı. Lütfen yeniden giriş yapın.
+        </div>
+      )}
+
+      {/* Adım rehberi */}
+      <div className="w-full max-w-md bg-violet-50 border border-violet-100 rounded-xl p-4">
+        <p className="text-xs font-semibold text-violet-700 mb-3">Nasıl bağlanırsınız?</p>
+        <ol className="space-y-2">
+          {[
+            'Yukarıdaki ID\'yi kopyalayın',
+            'Freelancer\'ınıza gönderin',
+            'Freelancer sizi Müşteriler listesinden düzenleyerek bu ID\'yi girer',
+            'Sayfayı yenileyin — paneliniz hazır!',
+          ].map((step, i) => (
+            <li key={i} className="flex items-start gap-2 text-xs text-violet-700">
+              <span className="w-5 h-5 bg-violet-200 text-violet-700 rounded-full flex items-center justify-center font-bold flex-shrink-0 text-[10px]">
+                {i + 1}
+              </span>
+              {step}
+            </li>
+          ))}
+        </ol>
+      </div>
+    </div>
+  );
+};
 
 export default ClientHomePage;

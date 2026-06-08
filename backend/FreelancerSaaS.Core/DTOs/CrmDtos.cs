@@ -3,12 +3,13 @@ namespace FreelancerSaaS.Core.DTOs
     // ─── Customer DTOs ────────────────────────────────────────
     public class CreateCustomerRequest
     {
-        public string CompanyName { get; set; } = string.Empty;
-        public string ContactName { get; set; } = string.Empty;
-        public string Email { get; set; } = string.Empty;
-        public string? Phone { get; set; }
-        public string? TaxNumber { get; set; }
+        public string  CompanyName    { get; set; } = string.Empty;
+        public string  ContactName    { get; set; } = string.Empty;
+        public string  Email          { get; set; } = string.Empty;
+        public string? Phone          { get; set; }
+        public string? TaxNumber      { get; set; }
         public string? BillingAddress { get; set; }
+        public Guid?   ClientUserId   { get; set; }
     }
 
     public class UpdateCustomerRequest

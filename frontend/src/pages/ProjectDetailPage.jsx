@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useProject, useMilestones, useAddMilestone } from '../hooks/useProjects';
 import { useProjectTasks } from '../hooks/useProjectTasks';
+import ProjectModal from '../components/projects/ProjectModal';
 import {
   ArrowLeft, Plus, Calendar, DollarSign, Flag, Columns3,
   CheckCircle2, Circle, Tag, User, FileText, Clock,
@@ -21,6 +22,7 @@ export default function ProjectDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [showMilestoneForm, setShowMilestoneForm] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
 
   const { data: project,       isLoading: pLoading }  = useProject(id);
   const { data: milestones = [], isLoading: mLoading } = useMilestones(id);
@@ -88,6 +90,7 @@ export default function ProjectDetailPage() {
             <LayoutGrid size={14} /> Kanban
           </button>
           <button
+            onClick={() => setEditModalOpen(true)}
             className="flex items-center gap-1.5 border border-slate-200 text-slate-700 text-sm font-medium px-3 py-2 rounded-xl hover:bg-slate-50 transition-colors">
             <Edit3 size={14} /> Düzenle
           </button>
@@ -304,6 +307,14 @@ export default function ProjectDetailPage() {
           </button>
         </div>
       </div>
+
+      {/* Düzenleme Modalı */}
+      {editModalOpen && (
+        <ProjectModal
+          project={project}
+          onClose={() => setEditModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

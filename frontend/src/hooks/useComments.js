@@ -6,6 +6,9 @@ export function useComments({ taskId, invoiceId } = {}) {
     queryKey: taskId ? ['comments', 'task', taskId] : ['comments', 'invoice', invoiceId],
     queryFn: () => taskId ? commentService.getByTask(taskId) : commentService.getByInvoice(invoiceId),
     enabled: !!(taskId || invoiceId),
+    // Her 10 saniyede bir otomatik yenile — freelancer/client senkronizasyonu
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: false,
   });
 }
 

@@ -3,7 +3,7 @@
 // 1. useEffect dependency array düzeltildi (navigation, loadComments, loadUser)
 // 2. Stale closure önlemek için useCallback kullanıldı
 // 3. navigation.setOptions'dan navigation dependency kaldırıldı → useLayoutEffect kullanıldı
-import React, { useState, useCallback, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
   StyleSheet, KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
@@ -19,6 +19,7 @@ export default function CommentScreen({ route, navigation }) {
   const [currentUser,  setCurrentUser]  = useState(null);
   const [newComment,   setNewComment]   = useState('');
   const [sending,      setSending]      = useState(false);
+  const intervalRef = useRef(null);
 
   // ── Header başlığını layout geçişinden ÖNCE ayarla (stale closure yok)
   useLayoutEffect(() => {
@@ -26,17 +27,17 @@ export default function CommentScreen({ route, navigation }) {
   }, [navigation, title]);
 
   // ── Yorumları yükle
-  const loadComments = useCallback(async () => {
-    setLoading(true);
+  const loadComments = useCallback(async (isBackground = false) => {
+    if (!isBackground) setLoading(true);
     try {
       let data = [];
       if (taskId)     data = await commentApi.getByTask(taskId);
       else if (invoiceId) data = await commentApi.getByInvoice(invoiceId);
       setComments(Array.isArray(data) ? data : []);
     } catch {
-      Alert.alert('Hata', 'Yorumlar yüklenemedi.');
+      if (!isBackground) Alert.alert('Hata', 'Yorumlar yüklenemedi.');
     } finally {
-      setLoading(false);
+      if (!isBackground) setLoading(false);
     }
   }, [taskId, invoiceId]);
 
@@ -54,6 +55,15 @@ export default function CommentScreen({ route, navigation }) {
   useEffect(() => {
     loadUser();
     loadComments();
+
+    // Her 10 saniyede bir yorumları otomatik yenile (arka plan)
+    intervalRef.current = setInterval(() => {
+      loadComments(true);
+    }, 10_000);
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, [loadUser, loadComments]);
 
   // ── Yorum gönder

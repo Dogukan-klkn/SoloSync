@@ -46,6 +46,7 @@ namespace FreelancerSaaS.Infrastructure.Services
                 Phone          = req.Phone,
                 TaxNumber      = req.TaxNumber,
                 BillingAddress = req.BillingAddress,
+                ClientUserId   = req.ClientUserId,
             };
             await _repo.AddAsync(customer);
             await _repo.SaveChangesAsync();
