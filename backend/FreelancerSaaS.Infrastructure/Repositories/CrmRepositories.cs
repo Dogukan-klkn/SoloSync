@@ -9,10 +9,11 @@ namespace FreelancerSaaS.Infrastructure.Repositories
     {
         public CustomerRepository(ApplicationDbContext context) : base(context) { }
 
-        public async Task<IEnumerable<Customer>> GetByUserIdAsync(Guid userId) =>
-            await _context.Customers
-                .Include(c => c.Projects)
-                .Where(c => c.UserId == userId)
+        public async Task<IEnumerable<Customer>> GetByFreelancerIdAsync(Guid freelancerId) =>
+            await _context.FreelancerCustomers
+                .Include(fc => fc.Customer).ThenInclude(c => c.Projects)
+                .Where(fc => fc.FreelancerId == freelancerId)
+                .Select(fc => fc.Customer)
                 .OrderBy(c => c.CompanyName)
                 .ToListAsync();
 
@@ -20,6 +21,15 @@ namespace FreelancerSaaS.Infrastructure.Repositories
             await _context.Customers
                 .Include(c => c.Projects)
                 .FirstOrDefaultAsync(c => c.Id == id);
+
+        public async Task<Customer?> GetByEmailAsync(string email) =>
+            await _context.Customers
+                .Include(c => c.FreelancerCustomers)
+                .FirstOrDefaultAsync(c => c.Email == email);
+
+        public async Task<bool> IsLinkedToFreelancerAsync(Guid customerId, Guid freelancerId) =>
+            await _context.FreelancerCustomers
+                .AnyAsync(fc => fc.CustomerId == customerId && fc.FreelancerId == freelancerId);
     }
 
     public class ProjectRepository : GenericRepository<Project>, IProjectRepository
@@ -37,25 +47,25 @@ namespace FreelancerSaaS.Infrastructure.Repositories
 
         public async Task<Project?> GetByIdWithMilestonesAsync(Guid id) =>
             await _context.Projects
-                .Include(p => p.Customer)
+                .Include(p => p.Customer).ThenInclude(c => c.FreelancerCustomers)
                 .Include(p => p.Milestones.OrderBy(m => m.Order))
                 .Include(p => p.Tasks)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
         public async Task<IEnumerable<Project>> GetProjectsByUserIdAsync(Guid userId) =>
             await _context.Projects
-                .Include(p => p.Customer)
+                .Include(p => p.Customer).ThenInclude(c => c.FreelancerCustomers)
                 .Include(p => p.Milestones)
                 .Include(p => p.Tasks)
-                .Where(p => p.Customer.UserId == userId)
+                .Where(p => p.Customer.FreelancerCustomers.Any(fc => fc.FreelancerId == userId))
                 .OrderByDescending(p => p.CreatedAt)
                 .ToListAsync();
 
         public async Task<IEnumerable<ProjectTask>> GetAllTasksByUserIdAsync(Guid userId) =>
             await _context.ProjectTasks
-                .Include(t => t.Project)
+                .Include(t => t.Project).ThenInclude(p => p.Customer).ThenInclude(c => c.FreelancerCustomers)
                 .Include(t => t.Tags)
-                .Where(t => t.Project.Customer.UserId == userId
+                .Where(t => t.Project.Customer.FreelancerCustomers.Any(fc => fc.FreelancerId == userId)
                          && t.Project.Status != ProjectStatus.Completed)
                 .OrderBy(t => t.Status)
                 .ThenByDescending(t => t.CreatedAt)
@@ -69,7 +79,7 @@ namespace FreelancerSaaS.Infrastructure.Repositories
 
         public async Task<IEnumerable<ProjectTask>> GetByProjectIdAsync(Guid projectId) =>
             await _context.ProjectTasks
-                .Include(t => t.Project).ThenInclude(p => p.Customer)
+                .Include(t => t.Project).ThenInclude(p => p.Customer).ThenInclude(c => c.FreelancerCustomers)
                 .Include(t => t.Tags.OrderBy(tag => tag.Order))
                 .Where(t => t.ProjectId == projectId)
                 .OrderBy(t => t.Status)
@@ -78,7 +88,7 @@ namespace FreelancerSaaS.Infrastructure.Repositories
 
         public async Task<ProjectTask?> GetByIdWithProjectAsync(Guid id) =>
             await _context.ProjectTasks
-                .Include(t => t.Project).ThenInclude(p => p.Customer)
+                .Include(t => t.Project).ThenInclude(p => p.Customer).ThenInclude(c => c.FreelancerCustomers)
                 .Include(t => t.Tags.OrderBy(tag => tag.Order))
                 .FirstOrDefaultAsync(t => t.Id == id);
 
@@ -217,9 +227,9 @@ namespace FreelancerSaaS.Infrastructure.Repositories
         public async Task<IEnumerable<ClientRequest>> GetAllByFreelancerIdAsync(Guid freelancerId, string? status = null)
         {
             var query = _context.ClientRequests
-                .Include(r => r.Project).ThenInclude(p => p.Customer)
+                .Include(r => r.Project).ThenInclude(p => p.Customer).ThenInclude(c => c.FreelancerCustomers)
                 .Include(r => r.Customer)
-                .Where(r => r.Project.Customer.UserId == freelancerId);
+                .Where(r => r.Project.Customer.FreelancerCustomers.Any(fc => fc.FreelancerId == freelancerId));
 
             if (!string.IsNullOrWhiteSpace(status) &&
                 Enum.TryParse<ClientRequestStatus>(status, true, out var s))

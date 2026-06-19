@@ -9,5 +9,7 @@ export const projectService = {
   remove:         (id)          => api.delete(`/projects/${id}`),
   getMilestones:      (projectId) => api.get(`/projects/${projectId}/milestones`),
   addMilestone:       (data)      => api.post('/projects/milestones', data),
+  updateMilestone:    (id, data)  => api.put(`/projects/milestones/${id}`, data),
+  deleteMilestone:    (id)        => api.delete(`/projects/milestones/${id}`),
   getDashboardTasks:  ()          => api.get('/projects/tasks/dashboard'),
 };

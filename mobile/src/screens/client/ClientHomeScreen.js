@@ -58,10 +58,11 @@ export default function ClientHomeScreen({ navigation }) {
   if (!profile) {
     return (
       <View style={styles.emptyState}>
-        <Text style={styles.emptyIcon}>⚠️</Text>
-        <Text style={styles.emptyTitle}>Profil bulunamadı</Text>
+        <Text style={styles.emptyIcon}>📧</Text>
+        <Text style={styles.emptyTitle}>Davet bekleniyor</Text>
         <Text style={styles.emptyDesc}>
-          Freelancer'ınızın sizi sisteme bağlaması gerekiyor.
+          Freelancer'ınız sizi sisteme eklediğinde e-posta adresinize bir davet kodu gelecektir.
+          Web tarayıcınızdan solosync.app/client-setup adresine giderek hesabınızı aktive edebilirsiniz.
         </Text>
       </View>
     );
@@ -124,9 +125,11 @@ export default function ClientHomeScreen({ navigation }) {
           <Text style={styles.emptySection}>Henüz proje yok</Text>
         ) : recentProjects.map(p => {
           const st = STATUS[p.status] ?? STATUS.Pending;
-          const progress = p.milestoneCount > 0
-            ? Math.round((p.completedMilestoneCount / p.milestoneCount) * 100)
-            : 0;
+          const progress = p.progressPercentage ?? (
+            p.milestoneCount > 0
+              ? Math.round((p.completedMilestoneCount / p.milestoneCount) * 100)
+              : 0
+          );
           return (
             <TouchableOpacity
               key={p.id}
@@ -192,7 +195,7 @@ const SectionCard = ({ title, onSeeAll, children }) => (
     <View style={styles.sectionHeader}>
       <Text style={styles.sectionTitle}>{title}</Text>
       <TouchableOpacity onPress={onSeeAll}>
-        <Text style={styles.seeAll}>Tümü →</Text>
+        <Text style={styles.seeAll}>Tümü</Text>
       </TouchableOpacity>
     </View>
     {children}

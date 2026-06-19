@@ -8,8 +8,9 @@ namespace FreelancerSaaS.Infrastructure.Data
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options) { }
 
-        public DbSet<User>           Users           => Set<User>();
-        public DbSet<Customer>       Customers       => Set<Customer>();
+        public DbSet<User>                Users                => Set<User>();
+        public DbSet<Customer>            Customers            => Set<Customer>();
+        public DbSet<FreelancerCustomer>  FreelancerCustomers  => Set<FreelancerCustomer>();
         public DbSet<Project>        Projects        => Set<Project>();
         public DbSet<Milestone>      Milestones      => Set<Milestone>();
         public DbSet<ProjectTask>    ProjectTasks    => Set<ProjectTask>();
@@ -28,6 +29,7 @@ namespace FreelancerSaaS.Infrastructure.Data
             // ─── Global Soft Delete Filter ────────────────────────
             modelBuilder.Entity<User>().HasQueryFilter(e => !e.IsDeleted);
             modelBuilder.Entity<Customer>().HasQueryFilter(e => !e.IsDeleted);
+            modelBuilder.Entity<FreelancerCustomer>().HasQueryFilter(e => !e.IsDeleted);
             modelBuilder.Entity<Project>().HasQueryFilter(e => !e.IsDeleted);
             modelBuilder.Entity<Milestone>().HasQueryFilter(e => !e.IsDeleted);
             modelBuilder.Entity<ProjectTask>().HasQueryFilter(e => !e.IsDeleted);
@@ -62,21 +64,7 @@ namespace FreelancerSaaS.Infrastructure.Data
                 e.Property(c => c.Phone).HasMaxLength(20);
                 e.Property(c => c.TaxNumber).HasMaxLength(50);
                 e.Property(c => c.BillingAddress).HasMaxLength(250);
-
-                // UserId kapsamında Email unique (soft-delete farkında)
-                e.HasIndex(c => new { c.UserId, c.Email }).IsUnique()
-                 .HasFilter("\"IsDeleted\" = false");
-
-                // TaxNumber nullable olduğu için NULL olmayan + aktif kayıtlar arasında unique
-                e.HasIndex(c => new { c.UserId, c.TaxNumber })
-                 .IsUnique()
-                 .HasFilter("\"TaxNumber\" IS NOT NULL AND \"IsDeleted\" = false");
-
-                // User → Customer (One-to-Many, Restrict on delete)
-                e.HasOne(c => c.User)
-                 .WithMany()
-                 .HasForeignKey(c => c.UserId)
-                 .OnDelete(DeleteBehavior.Restrict);
+                e.Property(c => c.InvitationToken).HasMaxLength(64);
 
                 // ClientUser → Customer (nullable, SetNull on delete)
                 e.HasOne(c => c.ClientUser)
@@ -84,6 +72,24 @@ namespace FreelancerSaaS.Infrastructure.Data
                  .HasForeignKey(c => c.ClientUserId)
                  .IsRequired(false)
                  .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // ─── FreelancerCustomer (Many-to-Many junction) ───────
+            modelBuilder.Entity<FreelancerCustomer>(e =>
+            {
+                e.HasKey(fc => fc.Id);
+                e.HasIndex(fc => new { fc.FreelancerId, fc.CustomerId }).IsUnique()
+                 .HasFilter("\"IsDeleted\" = false");
+
+                e.HasOne(fc => fc.Freelancer)
+                 .WithMany()
+                 .HasForeignKey(fc => fc.FreelancerId)
+                 .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne(fc => fc.Customer)
+                 .WithMany(c => c.FreelancerCustomers)
+                 .HasForeignKey(fc => fc.CustomerId)
+                 .OnDelete(DeleteBehavior.Cascade);
             });
 
             // ─── Project ──────────────────────────────────────────

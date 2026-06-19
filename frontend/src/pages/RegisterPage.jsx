@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate, Link } from 'react-router-dom';
 import { useState } from 'react';
+import { Home } from 'lucide-react';
 import { authService } from '../services/authService';
 import { useAuth } from '../store/authStore';
 
@@ -14,7 +15,6 @@ const schema = z
     email:           z.string().email('Geçerli bir e-posta giriniz').max(100),
     password:        z.string().min(6, 'Şifre en az 6 karakter olmalıdır'),
     confirmPassword: z.string(),
-    role:            z.enum(['1', '2'], { required_error: 'Lütfen bir rol seçiniz' }),
   })
   .refine((d) => d.password === d.confirmPassword, {
     message: 'Şifreler eşleşmiyor',
@@ -40,7 +40,7 @@ const RegisterPage = () => {
         lastName:  formData.lastName,
         email:     formData.email,
         password:  formData.password,
-        role:      parseInt(formData.role, 10), // "1" → 1 (Freelancer enum değeri)
+        role:      1, // Freelancer — müşteriler davetiye ile katılır
       };
       const { data } = await authService.register(payload);
       login(
@@ -48,7 +48,7 @@ const RegisterPage = () => {
         data.accessToken,
         data.refreshToken
       );
-      navigate(data.role === 'Client' ? '/client-portal' : '/dashboard');
+      navigate('/dashboard');
     } catch (err) {
       if (err.message?.includes('Sunucuya')) {
         setServerError('Backend\'e bağlanılamıyor. Lütfen serverin çalıştığına emin olun.');
@@ -71,9 +71,14 @@ const RegisterPage = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-brand-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white/10 backdrop-blur-md rounded-2xl shadow-2xl p-8 border border-white/20">
 
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-extrabold text-white">Hesap Oluştur</h1>
-          <p className="text-slate-300 mt-2 text-sm">Platform'a katılın</p>
+        <div className="mb-8">
+          <Link to="/" className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors mb-6">
+            <Home className="w-3.5 h-3.5" /> Ana Sayfa
+          </Link>
+          <div className="text-center">
+            <h1 className="text-3xl font-extrabold text-white">Freelancer Hesabı Oluştur</h1>
+            <p className="text-slate-300 mt-2 text-sm">Müşterilerinizi davet ederek projeleri birlikte yönetin</p>
+          </div>
         </div>
 
         {serverError && (
@@ -105,27 +110,6 @@ const RegisterPage = () => {
             {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email.message}</p>}
           </div>
 
-          {/* Rol Seçimi */}
-          <div>
-            <label className="block text-slate-300 text-sm font-medium mb-2">Rol Seçin</label>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { value: '1', label: '🧑‍💻 Freelancer', desc: 'Proje yönet ve fatura kes' },
-                { value: '2', label: '🏢 Müşteri',      desc: 'Projeleri takip et' },
-              ].map((r) => (
-                <label
-                  key={r.value}
-                  className="flex flex-col cursor-pointer p-3 rounded-lg border border-white/20 hover:border-brand-400 transition has-[:checked]:border-brand-500 has-[:checked]:bg-brand-500/10"
-                >
-                  <input {...register('role')} type="radio" value={r.value} className="sr-only" />
-                  <span className="text-white font-semibold text-sm">{r.label}</span>
-                  <span className="text-slate-400 text-xs mt-1">{r.desc}</span>
-                </label>
-              ))}
-            </div>
-            {errors.role && <p className="text-red-400 text-xs mt-1">{errors.role.message}</p>}
-          </div>
-
           {/* Şifre */}
           <div>
             <label className="block text-slate-300 text-sm font-medium mb-1">Şifre</label>
@@ -153,6 +137,12 @@ const RegisterPage = () => {
           Zaten hesabınız var mı?{' '}
           <Link to="/login" className="text-brand-400 hover:text-brand-300 font-semibold">
             Giriş Yap
+          </Link>
+        </p>
+        <p className="text-center text-slate-500 text-xs mt-3">
+          Müşteri misiniz?{' '}
+          <Link to="/client-setup" className="text-brand-400 hover:text-brand-300 font-medium">
+            Davetiye kodunuzla giriş yapın
           </Link>
         </p>
       </div>

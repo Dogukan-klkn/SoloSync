@@ -138,7 +138,7 @@ export default function ProjectsPage() {
                 {p.customerName}
               </span>
 
-              {/* Milestone Progress */}
+              {/* Progress */}
               {p.milestoneCount > 0 && (
                 <div className="mb-3">
                   <div className="flex justify-between text-xs text-slate-500 mb-1.5">
@@ -148,7 +148,7 @@ export default function ProjectsPage() {
                   <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-brand-500 rounded-full transition-all duration-500"
-                      style={{ width: `${(p.completedMilestoneCount / p.milestoneCount) * 100}%` }}
+                      style={{ width: `${p.progressPercentage ?? 0}%` }}
                     />
                   </div>
                 </div>

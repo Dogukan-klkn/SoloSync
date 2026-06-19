@@ -47,13 +47,11 @@ namespace FreelancerSaaS.API.Controllers
                 var result = await _service.CreateCustomerAsync(request, GetUserId());
                 return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
             }
+            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
             catch (DbUpdateException)
             {
-                return BadRequest(new
-                {
-                    statusCode = 400,
-                    message    = "Girilen Müşteri Portal Kullanıcı ID sistemde kayıtlı bir kullanıcıya ait değil. Lütfen geçerli bir ID giriniz."
-                });
+                return BadRequest(new { message = "Müşteri kaydedilirken bir hata oluştu. Lütfen tekrar deneyin." });
             }
         }
 
@@ -68,13 +66,10 @@ namespace FreelancerSaaS.API.Controllers
                 return Ok(result);
             }
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
             catch (DbUpdateException)
             {
-                return BadRequest(new
-                {
-                    statusCode = 400,
-                    message    = "Girilen Müşteri Portal Kullanıcı ID sistemde kayıtlı bir kullanıcıya ait değil. Lütfen geçerli bir ID giriniz."
-                });
+                return BadRequest(new { message = "Müşteri güncellenirken bir hata oluştu. Lütfen tekrar deneyin." });
             }
         }
 

@@ -3,6 +3,7 @@ using System;
 using FreelancerSaaS.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FreelancerSaaS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260618190910_AddClientInvitationFields")]
+    partial class AddClientInvitationFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -174,7 +177,9 @@ namespace FreelancerSaaS.Infrastructure.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<bool>("IsInvitationAccepted")
-                        .HasColumnType("boolean");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
 
                     b.Property<string>("Phone")
                         .HasMaxLength(20)
@@ -187,46 +192,22 @@ namespace FreelancerSaaS.Infrastructure.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ClientUserId");
 
-                    b.ToTable("Customers");
-                });
-
-            modelBuilder.Entity("FreelancerSaaS.Core.Entities.FreelancerCustomer", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("CustomerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("FreelancerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CustomerId");
-
-                    b.HasIndex("FreelancerId", "CustomerId")
+                    b.HasIndex("UserId", "Email")
                         .IsUnique()
                         .HasFilter("\"IsDeleted\" = false");
 
-                    b.ToTable("FreelancerCustomers");
+                    b.HasIndex("UserId", "TaxNumber")
+                        .IsUnique()
+                        .HasFilter("\"TaxNumber\" IS NOT NULL AND \"IsDeleted\" = false");
+
+                    b.ToTable("Customers");
                 });
 
             modelBuilder.Entity("FreelancerSaaS.Core.Entities.Invoice", b =>
@@ -696,26 +677,15 @@ namespace FreelancerSaaS.Infrastructure.Migrations
                         .HasForeignKey("ClientUserId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.Navigation("ClientUser");
-                });
-
-            modelBuilder.Entity("FreelancerSaaS.Core.Entities.FreelancerCustomer", b =>
-                {
-                    b.HasOne("FreelancerSaaS.Core.Entities.Customer", "Customer")
-                        .WithMany("FreelancerCustomers")
-                        .HasForeignKey("CustomerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("FreelancerSaaS.Core.Entities.User", "Freelancer")
+                    b.HasOne("FreelancerSaaS.Core.Entities.User", "User")
                         .WithMany()
-                        .HasForeignKey("FreelancerId")
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Customer");
+                    b.Navigation("ClientUser");
 
-                    b.Navigation("Freelancer");
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("FreelancerSaaS.Core.Entities.Invoice", b =>
@@ -831,8 +801,6 @@ namespace FreelancerSaaS.Infrastructure.Migrations
 
             modelBuilder.Entity("FreelancerSaaS.Core.Entities.Customer", b =>
                 {
-                    b.Navigation("FreelancerCustomers");
-
                     b.Navigation("Projects");
                 });
 

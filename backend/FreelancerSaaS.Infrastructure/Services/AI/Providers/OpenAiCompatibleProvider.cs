@@ -38,9 +38,8 @@ namespace FreelancerSaaS.Infrastructure.Services.AI.Providers
                     new { role = "system", content = systemPrompt },
                     new { role = "user",   content = userPrompt },
                 },
-                temperature     = 0.2,
-                max_tokens      = 800,
-                response_format = new { type = "json_object" },
+                temperature = 0.2,
+                max_tokens  = 800,
             };
 
             using var req = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/chat/completions");

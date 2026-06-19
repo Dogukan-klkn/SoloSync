@@ -17,11 +17,11 @@ namespace FreelancerSaaS.Core.Interfaces
 
     public interface ICustomerService
     {
-        Task<IEnumerable<CustomerResponse>> GetCustomersAsync(Guid userId, string? search = null);
-        Task<CustomerResponse?> GetCustomerByIdAsync(Guid id, Guid userId);
-        Task<CustomerResponse> CreateCustomerAsync(CreateCustomerRequest request, Guid userId);
-        Task<CustomerResponse> UpdateCustomerAsync(Guid id, UpdateCustomerRequest request, Guid userId);
-        Task DeleteCustomerAsync(Guid id, Guid userId);
+        Task<IEnumerable<CustomerResponse>> GetCustomersAsync(Guid freelancerId, string? search = null);
+        Task<CustomerResponse?> GetCustomerByIdAsync(Guid id, Guid freelancerId);
+        Task<CustomerResponse> CreateCustomerAsync(CreateCustomerRequest request, Guid freelancerId);
+        Task<CustomerResponse> UpdateCustomerAsync(Guid id, UpdateCustomerRequest request, Guid freelancerId);
+        Task DeleteCustomerAsync(Guid id, Guid freelancerId);
     }
 
     public interface IProjectService
@@ -33,6 +33,8 @@ namespace FreelancerSaaS.Core.Interfaces
         Task DeleteProjectAsync(Guid id, Guid userId);
         Task<IEnumerable<MilestoneResponse>> GetMilestonesAsync(Guid projectId, Guid userId);
         Task<MilestoneResponse> AddMilestoneAsync(CreateMilestoneRequest request, Guid userId);
+        Task<MilestoneResponse> UpdateMilestoneAsync(Guid milestoneId, UpdateMilestoneRequest request, Guid userId);
+        Task DeleteMilestoneAsync(Guid milestoneId, Guid userId);
         Task<IEnumerable<DashboardTaskResponse>> GetDashboardTasksAsync(Guid userId);
     }
 

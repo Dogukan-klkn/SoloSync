@@ -1,9 +1,8 @@
-// src/components/customers/CustomerModal.jsx
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { X } from 'lucide-react';
+import { X, Mail } from 'lucide-react';
 import { useCreateCustomer, useUpdateCustomer } from '../../hooks/useCustomers';
 
 const schema = z.object({
@@ -14,7 +13,6 @@ const schema = z.object({
   taxNumber:      z.string().max(50).optional().or(z.literal('')),
   billingAddress: z.string().max(250).optional().or(z.literal('')),
   isActive:       z.boolean().optional(),
-  clientUserId:   z.string().uuid('Geçersiz UUID formatı').optional().or(z.literal('')).nullable(),
 });
 
 const inputCls = 'w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition';
@@ -25,6 +23,7 @@ export default function CustomerModal({ customer, onClose }) {
   const create = useCreateCustomer();
   const update = useUpdateCustomer();
   const [serverError, setServerError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(schema),
@@ -38,24 +37,28 @@ export default function CustomerModal({ customer, onClose }) {
 
   const onSubmit = async (data) => {
     setServerError('');
+    setSuccessMsg('');
     const payload = {
       ...data,
       phone:          data.phone || null,
       taxNumber:      data.taxNumber || null,
       billingAddress: data.billingAddress || null,
-      clientUserId:   data.clientUserId || null,
     };
     try {
-      if (isEdit) await update.mutateAsync({ id: customer.id, data: payload });
-      else         await create.mutateAsync(payload);
-      onClose();
+      if (isEdit) {
+        await update.mutateAsync({ id: customer.id, data: payload });
+        onClose();
+      } else {
+        await create.mutateAsync(payload);
+        setSuccessMsg(`Müşteri eklendi! ${data.email} adresine davet e-postası gönderildi.`);
+        setTimeout(() => onClose(), 3000);
+      }
     } catch (err) {
-      // Form kapanmaz — hata modal içinde gösterilir
       const msg =
         err.response?.data?.message ||
-        err.response?.data?.errors ?
+        (err.response?.data?.errors ?
           Object.values(err.response.data.errors).flat().join(', ') :
-          'İşlem başarısız. Lütfen tekrar deneyin.';
+          'İşlem başarısız. Lütfen tekrar deneyin.');
       setServerError(msg);
     }
   };
@@ -76,12 +79,19 @@ export default function CustomerModal({ customer, onClose }) {
         {/* Form */}
         <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
 
-          {/* Sunucu hatası */}
           {serverError && (
             <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-2.5 rounded-lg">
               ⚠️ {serverError}
             </div>
           )}
+
+          {successMsg && (
+            <div className="bg-green-50 border border-green-200 text-green-700 text-sm px-4 py-3 rounded-lg flex items-start gap-2">
+              <Mail className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <span>{successMsg}</span>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Şirket Adı *</label>
@@ -99,6 +109,11 @@ export default function CustomerModal({ customer, onClose }) {
             <label className={labelCls}>E-posta *</label>
             <input {...register('email')} type="email" className={inputCls} placeholder="ali@acme.com" />
             {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
+            {!isEdit && (
+              <p className="text-xs text-slate-400 mt-1">
+                Bu adrese müşteri portal daveti e-postası gönderilecektir.
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -124,29 +139,16 @@ export default function CustomerModal({ customer, onClose }) {
             </label>
           )}
 
-          <div>
-            <label className={labelCls}>Müşteri Portal Kullanıcı ID <span className="text-slate-400 font-normal">(Opsiyonel)</span></label>
-            <input
-              {...register('clientUserId')}
-              className={inputCls}
-              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-            />
-            <p className="text-xs text-slate-400 mt-1">
-              Müşteri bu UUID ile sisteme kayıtlı bir Client hesabına bağlanır ve kendi portaline erişebilir.
-            </p>
-            {errors.clientUserId && <p className="text-red-500 text-xs mt-1">{errors.clientUserId.message}</p>}
-          </div>
-
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition font-medium text-sm">
               İptal
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !!successMsg}
               className="flex-1 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-semibold text-sm transition disabled:opacity-50"
             >
-              {isSubmitting ? 'Kaydediliyor...' : isEdit ? 'Güncelle' : 'Ekle'}
+              {isSubmitting ? 'Kaydediliyor...' : isEdit ? 'Güncelle' : 'Ekle & Davet Gönder'}
             </button>
           </div>
         </form>

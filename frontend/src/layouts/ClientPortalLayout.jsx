@@ -3,17 +3,16 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../store/authStore';
 import { useMyProfile, useMyProjects } from '../hooks/useClientPortal';
 import {
-  LayoutDashboard, FolderOpen, FileText, MessageSquare,
+  LayoutDashboard, FolderOpen, FileText,
   Menu, PanelLeftClose, LogOut, ChevronRight, Bell, Send
 } from 'lucide-react';
 import ProfileMenu from '../components/profile/ProfileMenu';
 
 const NAV_ITEMS = [
-  { to: '/client-portal',          label: 'Özet',         icon: LayoutDashboard, exact: true },
-  { to: '/client-portal/projects', label: 'Projelerim',   icon: FolderOpen },
-  { to: '/client-portal/invoices', label: 'Faturalarım',  icon: FileText },
-  { to: '/client-portal/requests', label: 'İsteklerim',   icon: Send },
-  { to: '/client-portal/messages', label: 'Mesajlar',     icon: MessageSquare },
+  { to: '/client-portal',          label: 'Özet',        icon: LayoutDashboard, exact: true },
+  { to: '/client-portal/projects', label: 'Projelerim',  icon: FolderOpen },
+  { to: '/client-portal/invoices', label: 'Faturalarım', icon: FileText },
+  { to: '/client-portal/requests', label: 'İsteklerim',  icon: Send },
 ];
 
 const ClientPortalLayout = () => {
@@ -24,7 +23,6 @@ const ClientPortalLayout = () => {
   const { data: profile } = useMyProfile();
   const { data: projects = [] } = useMyProjects();
 
-  // Toplam bekleyen istek sayısı (tüm projeler)
   const totalPendingRequests = projects.reduce(
     (sum, p) => sum + (p.pendingRequestCount ?? 0), 0
   );
@@ -118,7 +116,7 @@ const ClientPortalLayout = () => {
         <div className="border-t border-slate-100 p-3">
           {sidebarOpen && (
             <div className="mb-3 px-2">
-              <p className="text-white text-sm font-semibold truncate text-slate-800">
+              <p className="text-sm font-semibold truncate text-slate-800">
                 {user?.fullName}
               </p>
               <p className="text-xs text-slate-400 truncate">{profile?.companyName ?? 'Müşteri'}</p>

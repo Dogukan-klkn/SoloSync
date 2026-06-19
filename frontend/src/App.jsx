@@ -21,8 +21,8 @@ import ClientProjectsPage from './pages/client-portal/ClientProjectsPage';
 import ClientProjectDetailPage from './pages/client-portal/ClientProjectDetailPage';
 import ClientInvoicesPage from './pages/client-portal/ClientInvoicesPage';
 import ClientInvoiceDetailPage from './pages/client-portal/ClientInvoiceDetailPage';
-import ClientMessagesPage from './pages/client-portal/ClientMessagesPage';
 import ClientRequestsPage from './pages/client-portal/ClientRequestsPage';
+import ClientSetupPage from './pages/ClientSetupPage';
 import ProfileSettingsPage from './pages/ProfileSettingsPage';
 
 const queryClient = new QueryClient({
@@ -40,9 +40,10 @@ function App() {
       <AuthProvider>
         <BrowserRouter>
           <Routes>
-            <Route path="/"         element={<HomePage />} />
-            <Route path="/login"    element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/"             element={<HomePage />} />
+            <Route path="/login"        element={<LoginPage />} />
+            <Route path="/register"     element={<RegisterPage />} />
+            <Route path="/client-setup" element={<ClientSetupPage />} />
 
             <Route element={<ProtectedRoute />}>
               <Route path="/dashboard" element={<DashboardLayout />}>
@@ -69,7 +70,6 @@ function App() {
                 <Route path="invoices"               element={<ClientInvoicesPage />} />
                 <Route path="invoices/:id"           element={<ClientInvoiceDetailPage />} />
                 <Route path="requests"               element={<ClientRequestsPage />} />
-                <Route path="messages"               element={<ClientMessagesPage />} />
                 <Route path="profile"                element={<ProfileSettingsPage />} />
               </Route>
             </Route>

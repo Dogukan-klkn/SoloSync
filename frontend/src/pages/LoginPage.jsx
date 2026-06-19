@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate, Link } from 'react-router-dom';
 import { useState } from 'react';
+import { Home } from 'lucide-react';
 import { authService } from '../services/authService';
 import { useAuth } from '../store/authStore';
 
@@ -59,9 +60,14 @@ const LoginPage = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-brand-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white/10 backdrop-blur-md rounded-2xl shadow-2xl p-8 border border-white/20">
 
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-extrabold text-white">Tekrar Hoş Geldiniz</h1>
-          <p className="text-slate-300 mt-2 text-sm">Hesabınıza giriş yapın</p>
+        <div className="mb-8">
+          <Link to="/" className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors mb-6">
+            <Home className="w-3.5 h-3.5" /> Ana Sayfa
+          </Link>
+          <div className="text-center">
+            <h1 className="text-3xl font-extrabold text-white">Tekrar Hoş Geldiniz</h1>
+            <p className="text-slate-300 mt-2 text-sm">Hesabınıza giriş yapın</p>
+          </div>
         </div>
 
         {serverError && (

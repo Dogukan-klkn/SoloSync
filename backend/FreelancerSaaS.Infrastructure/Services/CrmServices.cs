@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using FreelancerSaaS.Core.DTOs;
 using FreelancerSaaS.Core.Entities;
 using FreelancerSaaS.Core.Interfaces;
@@ -9,12 +10,19 @@ namespace FreelancerSaaS.Infrastructure.Services
     public class CustomerService : ICustomerService
     {
         private readonly ICustomerRepository _repo;
+        private readonly ApplicationDbContext _context;
+        private readonly IEmailService _emailService;
 
-        public CustomerService(ICustomerRepository repo) => _repo = repo;
-
-        public async Task<IEnumerable<CustomerResponse>> GetCustomersAsync(Guid userId, string? search = null)
+        public CustomerService(ICustomerRepository repo, ApplicationDbContext context, IEmailService emailService)
         {
-            var customers = await _repo.GetByUserIdAsync(userId);
+            _repo = repo;
+            _context = context;
+            _emailService = emailService;
+        }
+
+        public async Task<IEnumerable<CustomerResponse>> GetCustomersAsync(Guid freelancerId, string? search = null)
+        {
+            var customers = await _repo.GetByFreelancerIdAsync(freelancerId);
 
             if (!string.IsNullOrWhiteSpace(search))
             {
@@ -28,36 +36,87 @@ namespace FreelancerSaaS.Infrastructure.Services
             return customers.Select(MapToResponse);
         }
 
-        public async Task<CustomerResponse?> GetCustomerByIdAsync(Guid id, Guid userId)
+        public async Task<CustomerResponse?> GetCustomerByIdAsync(Guid id, Guid freelancerId)
         {
             var c = await _repo.GetByIdWithProjectsAsync(id);
-            if (c == null || c.UserId != userId) return null;
+            if (c == null) return null;
+            var isLinked = await _repo.IsLinkedToFreelancerAsync(c.Id, freelancerId);
+            if (!isLinked) return null;
             return MapToResponse(c);
         }
 
-        public async Task<CustomerResponse> CreateCustomerAsync(CreateCustomerRequest req, Guid userId)
+        public async Task<CustomerResponse> CreateCustomerAsync(CreateCustomerRequest req, Guid freelancerId)
         {
-            var customer = new Customer
+            // Freelancer bilgisini al (davetiye emailde kullanmak için)
+            var freelancer = await _context.Users.FindAsync(freelancerId)
+                ?? throw new KeyNotFoundException("Freelancer bulunamadı.");
+
+            // Bu email ile daha önce müşteri kaydı var mı?
+            var existing = await _repo.GetByEmailAsync(req.Email);
+            Customer customer;
+
+            if (existing != null)
             {
-                UserId         = userId,
-                CompanyName    = req.CompanyName,
-                ContactName    = req.ContactName,
-                Email          = req.Email,
-                Phone          = req.Phone,
-                TaxNumber      = req.TaxNumber,
-                BillingAddress = req.BillingAddress,
-                ClientUserId   = req.ClientUserId,
-            };
-            await _repo.AddAsync(customer);
-            await _repo.SaveChangesAsync();
-            return MapToResponse(customer);
+                // Zaten bu freelancer'a bağlı mı?
+                var alreadyLinked = await _repo.IsLinkedToFreelancerAsync(existing.Id, freelancerId);
+                if (alreadyLinked)
+                    throw new ArgumentException("Bu müşteri zaten listenizde kayıtlı.");
+
+                // Farklı bir freelancer'a ait → sadece yeni bağlantı kur
+                customer = existing;
+                _context.FreelancerCustomers.Add(new FreelancerCustomer
+                {
+                    FreelancerId = freelancerId,
+                    CustomerId   = existing.Id,
+                });
+                await _context.SaveChangesAsync();
+            }
+            else
+            {
+                // Yeni müşteri oluştur
+                var otp = GenerateOtp();
+                var tokenHash = HashOtp(otp);
+
+                customer = new Customer
+                {
+                    CompanyName       = req.CompanyName,
+                    ContactName       = req.ContactName,
+                    Email             = req.Email,
+                    Phone             = req.Phone,
+                    TaxNumber         = req.TaxNumber,
+                    BillingAddress    = req.BillingAddress,
+                    InvitationToken   = tokenHash,
+                    InvitationSentAt  = DateTime.UtcNow,
+                    IsInvitationAccepted = false,
+                };
+                await _repo.AddAsync(customer);
+                await _context.SaveChangesAsync();
+
+                _context.FreelancerCustomers.Add(new FreelancerCustomer
+                {
+                    FreelancerId = freelancerId,
+                    CustomerId   = customer.Id,
+                });
+                await _context.SaveChangesAsync();
+
+                // Davetiye emailini gönder (hata olsa da işlemi durdurmuyoruz)
+                try
+                {
+                    var freelancerName = $"{freelancer.FirstName} {freelancer.LastName}";
+                    await _emailService.SendInvitationAsync(req.Email, req.ContactName, freelancerName, otp);
+                }
+                catch { /* email hatası müşteri kaydını engellemez */ }
+            }
+
+            return MapToResponse(await _repo.GetByIdWithProjectsAsync(customer.Id) ?? customer);
         }
 
-        public async Task<CustomerResponse> UpdateCustomerAsync(Guid id, UpdateCustomerRequest req, Guid userId)
+        public async Task<CustomerResponse> UpdateCustomerAsync(Guid id, UpdateCustomerRequest req, Guid freelancerId)
         {
             var customer = await _repo.GetByIdAsync(id)
                 ?? throw new KeyNotFoundException("Müşteri bulunamadı.");
-            if (customer.UserId != userId) throw new UnauthorizedAccessException();
+            var isLinked = await _repo.IsLinkedToFreelancerAsync(id, freelancerId);
+            if (!isLinked) throw new UnauthorizedAccessException();
 
             customer.CompanyName    = req.CompanyName;
             customer.ContactName    = req.ContactName;
@@ -66,7 +125,6 @@ namespace FreelancerSaaS.Infrastructure.Services
             customer.TaxNumber      = req.TaxNumber;
             customer.BillingAddress = req.BillingAddress;
             customer.IsActive       = req.IsActive;
-            customer.ClientUserId   = req.ClientUserId;
             customer.UpdatedAt      = DateTime.UtcNow;
 
             _repo.Update(customer);
@@ -74,28 +132,61 @@ namespace FreelancerSaaS.Infrastructure.Services
             return MapToResponse(customer);
         }
 
-        public async Task DeleteCustomerAsync(Guid id, Guid userId)
+        public async Task DeleteCustomerAsync(Guid id, Guid freelancerId)
         {
-            var customer = await _repo.GetByIdAsync(id)
-                ?? throw new KeyNotFoundException("Müşteri bulunamadı.");
-            if (customer.UserId != userId) throw new UnauthorizedAccessException();
-            _repo.Remove(customer);
-            await _repo.SaveChangesAsync();
+            var isLinked = await _repo.IsLinkedToFreelancerAsync(id, freelancerId);
+            if (!isLinked) throw new UnauthorizedAccessException();
+
+            // Sadece bu freelancer'ın bağlantısını kaldır (başka freelancer varsa müşteriyi silme)
+            var link = await _context.FreelancerCustomers
+                .FirstOrDefaultAsync(fc => fc.CustomerId == id && fc.FreelancerId == freelancerId);
+            if (link != null)
+            {
+                _context.FreelancerCustomers.Remove(link);
+                await _context.SaveChangesAsync();
+            }
+
+            // Başka freelancer bağlantısı yoksa müşteriyi de sil
+            var otherLinks = await _context.FreelancerCustomers
+                .AnyAsync(fc => fc.CustomerId == id);
+            if (!otherLinks)
+            {
+                var customer = await _repo.GetByIdAsync(id);
+                if (customer != null)
+                {
+                    _repo.Remove(customer);
+                    await _repo.SaveChangesAsync();
+                }
+            }
+        }
+
+        private static string GenerateOtp()
+        {
+            var bytes = new byte[4];
+            RandomNumberGenerator.Fill(bytes);
+            var number = Math.Abs(BitConverter.ToInt32(bytes, 0)) % 1_000_000;
+            return number.ToString("D6");
+        }
+
+        internal static string HashOtp(string otp)
+        {
+            var hash = SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(otp));
+            return Convert.ToHexString(hash)[..32];
         }
 
         private static CustomerResponse MapToResponse(Customer c) => new()
         {
-            Id             = c.Id,
-            CompanyName    = c.CompanyName,
-            ContactName    = c.ContactName,
-            Email          = c.Email,
-            Phone          = c.Phone,
-            TaxNumber      = c.TaxNumber,
-            BillingAddress = c.BillingAddress,
-            IsActive       = c.IsActive,
-            CreatedAt      = c.CreatedAt,
-            ProjectCount   = c.Projects?.Count ?? 0,
-            ClientUserId   = c.ClientUserId,
+            Id                   = c.Id,
+            CompanyName          = c.CompanyName,
+            ContactName          = c.ContactName,
+            Email                = c.Email,
+            Phone                = c.Phone,
+            TaxNumber            = c.TaxNumber,
+            BillingAddress       = c.BillingAddress,
+            IsActive             = c.IsActive,
+            CreatedAt            = c.CreatedAt,
+            ProjectCount         = c.Projects?.Count ?? 0,
+            IsInvitationAccepted = c.IsInvitationAccepted,
         };
     }
 
@@ -123,23 +214,26 @@ namespace FreelancerSaaS.Infrastructure.Services
 
             // Güvenlik: sadece kendi müşterilere ait projeler
             return projects
-                .Where(p => p.Customer.UserId == userId)
+                .Where(p => p.Customer.FreelancerCustomers.Any(fc => fc.FreelancerId == userId))
                 .Select(MapToResponse);
         }
 
         public async Task<ProjectResponse?> GetProjectByIdAsync(Guid id, Guid userId)
         {
             var p = await _projectRepo.GetByIdWithMilestonesAsync(id);
-            if (p == null || p.Customer.UserId != userId) return null;
+            if (p == null) return null;
+            var isLinked = p.Customer.FreelancerCustomers.Any(fc => fc.FreelancerId == userId);
+            if (!isLinked) return null;
             return MapToResponse(p);
         }
 
         public async Task<ProjectResponse> CreateProjectAsync(CreateProjectRequest req, Guid userId)
         {
-            // Müşterinin bu kullanıcıya ait olduğunu doğrula
+            // Müşterinin bu kullanıcıya bağlı olduğunu doğrula
             var customer = await _customerRepo.GetByIdAsync(req.CustomerId)
                 ?? throw new KeyNotFoundException("Müşteri bulunamadı.");
-            if (customer.UserId != userId) throw new UnauthorizedAccessException();
+            var isLinked = await _customerRepo.IsLinkedToFreelancerAsync(req.CustomerId, userId);
+            if (!isLinked) throw new UnauthorizedAccessException();
 
             var project = new Project
             {
@@ -163,7 +257,7 @@ namespace FreelancerSaaS.Infrastructure.Services
         {
             var project = await _projectRepo.GetByIdWithMilestonesAsync(id)
                 ?? throw new KeyNotFoundException("Proje bulunamadı.");
-            if (project.Customer.UserId != userId) throw new UnauthorizedAccessException();
+            if (!project.Customer.FreelancerCustomers.Any(fc => fc.FreelancerId == userId)) throw new UnauthorizedAccessException();
 
             project.Name        = req.Name;
             project.Description = req.Description;
@@ -183,7 +277,7 @@ namespace FreelancerSaaS.Infrastructure.Services
         {
             var project = await _projectRepo.GetByIdWithMilestonesAsync(id)
                 ?? throw new KeyNotFoundException("Proje bulunamadı.");
-            if (project.Customer.UserId != userId) throw new UnauthorizedAccessException();
+            if (!project.Customer.FreelancerCustomers.Any(fc => fc.FreelancerId == userId)) throw new UnauthorizedAccessException();
             _projectRepo.Remove(project);
             await _projectRepo.SaveChangesAsync();
         }
@@ -192,7 +286,7 @@ namespace FreelancerSaaS.Infrastructure.Services
         {
             var project = await _projectRepo.GetByIdWithMilestonesAsync(projectId)
                 ?? throw new KeyNotFoundException("Proje bulunamadı.");
-            if (project.Customer.UserId != userId) throw new UnauthorizedAccessException();
+            if (!project.Customer.FreelancerCustomers.Any(fc => fc.FreelancerId == userId)) throw new UnauthorizedAccessException();
 
             // Tasks'ları milestone bazında çek (dinamik progress için)
             var milestoneTasks = await _context.ProjectTasks
@@ -211,7 +305,7 @@ namespace FreelancerSaaS.Infrastructure.Services
         {
             var project = await _projectRepo.GetByIdWithMilestonesAsync(req.ProjectId)
                 ?? throw new KeyNotFoundException("Proje bulunamadı.");
-            if (project.Customer.UserId != userId) throw new UnauthorizedAccessException();
+            if (!project.Customer.FreelancerCustomers.Any(fc => fc.FreelancerId == userId)) throw new UnauthorizedAccessException();
 
             var milestone = new Milestone
             {
@@ -224,6 +318,47 @@ namespace FreelancerSaaS.Infrastructure.Services
             await _context.Milestones.AddAsync(milestone);
             await _context.SaveChangesAsync();
             return MapMilestone(milestone, 0, 0);
+        }
+
+        public async Task<MilestoneResponse> UpdateMilestoneAsync(Guid milestoneId, UpdateMilestoneRequest req, Guid userId)
+        {
+            var milestone = await _context.Milestones
+                .Include(m => m.Tasks)
+                .Include(m => m.Project).ThenInclude(p => p.Customer).ThenInclude(c => c.FreelancerCustomers)
+                .FirstOrDefaultAsync(m => m.Id == milestoneId && !m.IsDeleted)
+                ?? throw new KeyNotFoundException("Milestone bulunamadı.");
+
+            if (!milestone.Project.Customer.FreelancerCustomers.Any(fc => fc.FreelancerId == userId))
+                throw new UnauthorizedAccessException();
+
+            milestone.Title       = req.Title;
+            milestone.Description = req.Description;
+            milestone.DueDate     = ParseDate(req.DueDate);
+
+            await _context.SaveChangesAsync();
+
+            var total     = milestone.Tasks?.Count ?? 0;
+            var completed = milestone.Tasks?.Count(t => t.Status == ProjectTaskStatus.Done) ?? 0;
+            return MapMilestone(milestone, total, completed);
+        }
+
+        public async Task DeleteMilestoneAsync(Guid milestoneId, Guid userId)
+        {
+            var milestone = await _context.Milestones
+                .Include(m => m.Tasks)
+                .Include(m => m.Project).ThenInclude(p => p.Customer).ThenInclude(c => c.FreelancerCustomers)
+                .FirstOrDefaultAsync(m => m.Id == milestoneId && !m.IsDeleted)
+                ?? throw new KeyNotFoundException("Milestone bulunamadı.");
+
+            if (!milestone.Project.Customer.FreelancerCustomers.Any(fc => fc.FreelancerId == userId))
+                throw new UnauthorizedAccessException();
+
+            milestone.IsDeleted = true;
+            if (milestone.Tasks != null)
+                foreach (var task in milestone.Tasks)
+                    task.IsDeleted = true;
+
+            await _context.SaveChangesAsync();
         }
 
         /// <summary>
@@ -318,7 +453,7 @@ namespace FreelancerSaaS.Infrastructure.Services
         {
             var project = await _projectRepo.GetByIdWithMilestonesAsync(projectId)
                 ?? throw new KeyNotFoundException("Proje bulunamadı.");
-            if (project.Customer.UserId != userId) throw new UnauthorizedAccessException();
+            if (!project.Customer.FreelancerCustomers.Any(fc => fc.FreelancerId == userId)) throw new UnauthorizedAccessException();
 
             var tasks = await _taskRepo.GetByProjectIdAsync(projectId);
             return tasks.Select(MapToResponse);
@@ -327,7 +462,7 @@ namespace FreelancerSaaS.Infrastructure.Services
         public async Task<ProjectTaskResponse?> GetTaskByIdAsync(Guid id, Guid userId)
         {
             var task = await _taskRepo.GetByIdWithProjectAsync(id);
-            if (task == null || task.Project.Customer.UserId != userId) return null;
+            if (task == null || !task.Project.Customer.FreelancerCustomers.Any(fc => fc.FreelancerId == userId)) return null;
             return MapToResponse(task);
         }
 
@@ -335,7 +470,7 @@ namespace FreelancerSaaS.Infrastructure.Services
         {
             var project = await _projectRepo.GetByIdWithMilestonesAsync(req.ProjectId)
                 ?? throw new KeyNotFoundException("Proje bulunamadı.");
-            if (project.Customer.UserId != userId) throw new UnauthorizedAccessException();
+            if (!project.Customer.FreelancerCustomers.Any(fc => fc.FreelancerId == userId)) throw new UnauthorizedAccessException();
 
             var task = new ProjectTask
             {
@@ -362,7 +497,7 @@ namespace FreelancerSaaS.Infrastructure.Services
         {
             var task = await _taskRepo.GetByIdWithProjectAsync(id)
                 ?? throw new KeyNotFoundException("Görev bulunamadı.");
-            if (task.Project.Customer.UserId != userId) throw new UnauthorizedAccessException();
+            if (!task.Project.Customer.FreelancerCustomers.Any(fc => fc.FreelancerId == userId)) throw new UnauthorizedAccessException();
 
             task.MilestoneId = req.MilestoneId;
             task.Title       = req.Title;
@@ -388,7 +523,7 @@ namespace FreelancerSaaS.Infrastructure.Services
         {
             var task = await _taskRepo.GetByIdWithProjectAsync(id)
                 ?? throw new KeyNotFoundException("Görev bulunamadı.");
-            if (task.Project.Customer.UserId != userId) throw new UnauthorizedAccessException();
+            if (!task.Project.Customer.FreelancerCustomers.Any(fc => fc.FreelancerId == userId)) throw new UnauthorizedAccessException();
             _taskRepo.Remove(task);
             await _taskRepo.SaveChangesAsync();
         }
@@ -399,13 +534,13 @@ namespace FreelancerSaaS.Infrastructure.Services
 
             var taskIds = items.Select(i => i.Id).ToList();
             var tasks = await _context.ProjectTasks
-                .Include(t => t.Project).ThenInclude(p => p.Customer)
+                .Include(t => t.Project).ThenInclude(p => p.Customer).ThenInclude(c => c.FreelancerCustomers)
                 .Where(t => taskIds.Contains(t.Id))
                 .ToListAsync();
 
             foreach (var task in tasks)
             {
-                if (task.Project.Customer.UserId != userId) throw new UnauthorizedAccessException();
+                if (!task.Project.Customer.FreelancerCustomers.Any(fc => fc.FreelancerId == userId)) throw new UnauthorizedAccessException();
 
                 var item = items.First(i => i.Id == task.Id);
                 task.Status    = (ProjectTaskStatus)item.Status;
@@ -509,7 +644,7 @@ namespace FreelancerSaaS.Infrastructure.Services
 
             var task = await _taskRepo.GetByIdWithProjectAsync(req.ProjectTaskId)
                 ?? throw new KeyNotFoundException("Görev bulunamadı.");
-            if (task.Project.Customer.UserId != userId) throw new UnauthorizedAccessException();
+            if (!task.Project.Customer.FreelancerCustomers.Any(fc => fc.FreelancerId == userId)) throw new UnauthorizedAccessException();
             if (task.Status == ProjectTaskStatus.Done)
                 throw new ArgumentException("Tamamlanmış bir göreve zaman kaydı başlatılamaz.");
 
@@ -548,7 +683,7 @@ namespace FreelancerSaaS.Infrastructure.Services
         {
             var task = await _taskRepo.GetByIdWithProjectAsync(req.ProjectTaskId)
                 ?? throw new KeyNotFoundException("Görev bulunamadı.");
-            if (task.Project.Customer.UserId != userId) throw new UnauthorizedAccessException();
+            if (!task.Project.Customer.FreelancerCustomers.Any(fc => fc.FreelancerId == userId)) throw new UnauthorizedAccessException();
 
             var start = ParseDateTime(req.StartTime)
                 ?? throw new ArgumentException("Geçersiz başlangıç zamanı.");
@@ -1054,10 +1189,8 @@ namespace FreelancerSaaS.Infrastructure.Services
 
         public async Task<ClientRequestResponse> CreateAsync(CreateClientRequestRequest req, Guid userId)
         {
-            // Client portal: Customer.ClientUserId — freelancer CRM: Customer.UserId
             var customer = await _context.Customers
-                .FirstOrDefaultAsync(c => c.ClientUserId == userId)
-                ?? await _context.Customers.FirstOrDefaultAsync(c => c.UserId == userId);
+                .FirstOrDefaultAsync(c => c.ClientUserId == userId);
 
             if (customer == null)
                 throw new UnauthorizedAccessException("Müşteri kaydı bulunamadı.");
@@ -1168,7 +1301,7 @@ namespace FreelancerSaaS.Infrastructure.Services
         // clientUserId → hangi Customer'a bağlı?
         private async Task<Customer?> FindCustomerAsync(Guid clientUserId)
             => await _context.Customers
-                .Include(c => c.User)
+                .Include(c => c.FreelancerCustomers).ThenInclude(fc => fc.Freelancer)
                 .Include(c => c.Projects)
                 .FirstOrDefaultAsync(c => c.ClientUserId == clientUserId);
 
@@ -1193,17 +1326,21 @@ namespace FreelancerSaaS.Infrastructure.Services
             return MapClientProfile(customer);
         }
 
-        private static ClientProfileResponse MapClientProfile(Customer customer) => new()
+        private static ClientProfileResponse MapClientProfile(Customer customer)
         {
-            CustomerId      = customer.Id,
-            CompanyName     = customer.CompanyName,
-            ContactName     = customer.ContactName,
-            Email           = customer.Email,
-            Phone           = customer.Phone,
-            BillingAddress  = customer.BillingAddress,
-            FreelancerName  = customer.User != null ? $"{customer.User.FirstName} {customer.User.LastName}" : string.Empty,
-            FreelancerEmail = customer.User?.Email ?? string.Empty,
-        };
+            var primaryFreelancer = customer.FreelancerCustomers.FirstOrDefault()?.Freelancer;
+            return new()
+            {
+                CustomerId      = customer.Id,
+                CompanyName     = customer.CompanyName,
+                ContactName     = customer.ContactName,
+                Email           = customer.Email,
+                Phone           = customer.Phone,
+                BillingAddress  = customer.BillingAddress,
+                FreelancerName  = primaryFreelancer != null ? $"{primaryFreelancer.FirstName} {primaryFreelancer.LastName}" : string.Empty,
+                FreelancerEmail = primaryFreelancer?.Email ?? string.Empty,
+            };
+        }
 
         public async Task<IEnumerable<ProjectResponse>> GetMyProjectsAsync(Guid clientUserId)
         {
@@ -1211,7 +1348,7 @@ namespace FreelancerSaaS.Infrastructure.Services
             if (customer == null) return [];
 
             var projects = await _context.Projects
-                .Include(p => p.Customer).ThenInclude(c => c.User)
+                .Include(p => p.Customer).ThenInclude(c => c.FreelancerCustomers).ThenInclude(fc => fc.Freelancer)
                 .Include(p => p.Milestones).ThenInclude(m => m.Tasks)
                 .Where(p => p.CustomerId == customer.Id)
                 .ToListAsync();
@@ -1237,7 +1374,7 @@ namespace FreelancerSaaS.Infrastructure.Services
             if (customer == null) return null;
 
             var project = await _context.Projects
-                .Include(p => p.Customer).ThenInclude(c => c.User)
+                .Include(p => p.Customer).ThenInclude(c => c.FreelancerCustomers).ThenInclude(fc => fc.Freelancer)
                 .Include(p => p.Milestones).ThenInclude(m => m.Tasks)
                 .FirstOrDefaultAsync(p => p.Id == projectId && p.CustomerId == customer.Id);
 
@@ -1416,23 +1553,32 @@ namespace FreelancerSaaS.Infrastructure.Services
 
         private static ProjectResponse MapProject(Project p) => MapProjectWithPending(p, 0);
 
-        private static ProjectResponse MapProjectWithPending(Project p, int pendingRequestCount) => new()
+        private static ProjectResponse MapProjectWithPending(Project p, int pendingRequestCount)
         {
-            Id                      = p.Id,
-            CustomerId              = p.CustomerId,
-            CustomerName            = p.Customer?.CompanyName ?? string.Empty,
-            Name                    = p.Name,
-            Description             = p.Description,
-            Status                  = p.Status.ToString(),
-            StatusValue             = (int)p.Status,
-            StartDate               = p.StartDate,
-            EndDate                 = p.EndDate,
-            Budget                  = p.Budget,
-            CreatedAt               = p.CreatedAt,
-            MilestoneCount          = p.Milestones?.Count ?? 0,
-            CompletedMilestoneCount = p.Milestones?.Count(m => m.IsCompleted) ?? 0,
-            PendingRequestCount     = pendingRequestCount,
-        };
+            var total     = p.Milestones?.SelectMany(m => m.Tasks).Count() ?? 0;
+            var completed = p.Milestones?.SelectMany(m => m.Tasks).Count(t => t.Status == ProjectTaskStatus.Done) ?? 0;
+            var pct       = total > 0 ? (int)Math.Round((double)completed / total * 100) : 0;
+            return new()
+            {
+                Id                      = p.Id,
+                CustomerId              = p.CustomerId,
+                CustomerName            = p.Customer?.CompanyName ?? string.Empty,
+                Name                    = p.Name,
+                Description             = p.Description,
+                Status                  = p.Status.ToString(),
+                StatusValue             = (int)p.Status,
+                StartDate               = p.StartDate,
+                EndDate                 = p.EndDate,
+                Budget                  = p.Budget,
+                CreatedAt               = p.CreatedAt,
+                MilestoneCount          = p.Milestones?.Count ?? 0,
+                CompletedMilestoneCount = p.Milestones?.Count(m => m.IsCompleted) ?? 0,
+                TotalTaskCount          = total,
+                CompletedTaskCount      = completed,
+                ProgressPercentage      = pct,
+                PendingRequestCount     = pendingRequestCount,
+            };
+        }
 
         private static InvoiceResponse MapInvoice(Invoice inv) => new()
         {

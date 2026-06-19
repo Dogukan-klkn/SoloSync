@@ -45,11 +45,11 @@ builder.Services.AddSwaggerGen();
 
 // ─── Database ─────────────────────────────────────────────
 var dbConnection = builder.Configuration.GetConnectionString("DefaultConnection");
-if (!dbConnection!.Contains("client encoding", StringComparison.OrdinalIgnoreCase))
-    dbConnection += ";Options=-c client_encoding=UTF8";
 
+// server_encoding WIN1252 kurulu sistemlerde her bağlantıda UTF8'e geç
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(dbConnection));
+    options.UseNpgsql(dbConnection)
+           .AddInterceptors(new FreelancerSaaS.API.Infrastructure.Utf8EncodingInterceptor()));
 
 // ─── JWT Authentication ───────────────────────────────────
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -107,6 +107,7 @@ builder.Services.AddCors(options =>
 
 // ─── Dependency Injection ─────────────────────────────────
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
@@ -122,6 +123,10 @@ builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IClientRequestService, ClientRequestService>();
 builder.Services.AddScoped<IClientPortalService, ClientPortalService>();
+
+// ─── SMTP ─────────────────────────────────────────────────
+builder.Services.Configure<FreelancerSaaS.Core.Configuration.SmtpSettings>(
+    builder.Configuration.GetSection("SmtpSettings"));
 
 // ─── AI (sağlayıcıdan bağımsız) ───────────────────────────
 builder.Services.Configure<AiSettings>(builder.Configuration.GetSection("AISettings"));

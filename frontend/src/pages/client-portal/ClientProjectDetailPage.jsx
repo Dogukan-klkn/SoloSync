@@ -53,9 +53,7 @@ const ClientProjectDetailPage = () => {
   if (!project) return <div className="text-center py-20 text-slate-500">Proje bulunamadı.</div>;
 
   const st = statusLabel[project.status] ?? statusLabel.Pending;
-  const progress = project.milestoneCount > 0
-    ? Math.round((project.completedMilestoneCount / project.milestoneCount) * 100)
-    : 0;
+  const progress = project.progressPercentage ?? 0;
 
   const handleSendRequest = async (e) => {
     e.preventDefault();
@@ -296,7 +294,7 @@ const RequestsTab = ({
           )}
           {!preview.isAiPowered && (
             <p className="text-xs text-amber-600 mt-2">
-              Gercek AI ozeti icin Groq API anahtarini appsettings.Development.json dosyasina ekleyin (console.groq.com).
+              AI özeti şu an kullanılamıyor, istek doğrudan iletilecek.
             </p>
           )}
         </div>

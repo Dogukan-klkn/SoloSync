@@ -70,9 +70,7 @@ const ClientProjectsPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filtered.map(p => {
             const st = statusLabel[p.status] ?? statusLabel.Pending;
-            const progress = p.milestoneCount > 0
-              ? Math.round((p.completedMilestoneCount / p.milestoneCount) * 100)
-              : 0;
+            const progress = p.progressPercentage ?? 0;
             return (
               <Link
                 key={p.id}

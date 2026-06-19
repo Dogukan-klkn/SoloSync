@@ -9,7 +9,6 @@ namespace FreelancerSaaS.Core.DTOs
         public string? Phone          { get; set; }
         public string? TaxNumber      { get; set; }
         public string? BillingAddress { get; set; }
-        public Guid?   ClientUserId   { get; set; }
     }
 
     public class UpdateCustomerRequest
@@ -21,7 +20,6 @@ namespace FreelancerSaaS.Core.DTOs
         public string? TaxNumber { get; set; }
         public string? BillingAddress { get; set; }
         public bool IsActive { get; set; } = true;
-        public Guid? ClientUserId { get; set; }
     }
 
     public class CustomerResponse
@@ -36,7 +34,8 @@ namespace FreelancerSaaS.Core.DTOs
         public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
         public int ProjectCount { get; set; }
-        public Guid? ClientUserId { get; set; }
+        public bool IsInvitationAccepted { get; set; }
+        public bool HasPortalAccount => IsInvitationAccepted;
     }
 
     // Client Portal — müşterinin kendi profilini görmesi için
@@ -131,6 +130,13 @@ namespace FreelancerSaaS.Core.DTOs
         /// <summary>Frontend'den "YYYY-MM-DD" formatında gelir.</summary>
         public string? DueDate { get; set; }
         public int Order { get; set; }
+    }
+
+    public class UpdateMilestoneRequest
+    {
+        public string Title { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string? DueDate { get; set; }
     }
 
     public class MilestoneResponse

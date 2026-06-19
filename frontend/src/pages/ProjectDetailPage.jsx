@@ -2,13 +2,13 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { useProject, useMilestones, useAddMilestone } from '../hooks/useProjects';
+import { useProject, useMilestones, useAddMilestone, useUpdateMilestone, useDeleteMilestone } from '../hooks/useProjects';
 import { useProjectTasks } from '../hooks/useProjectTasks';
 import ProjectModal from '../components/projects/ProjectModal';
 import {
   ArrowLeft, Plus, Calendar, DollarSign, Flag, Columns3,
   CheckCircle2, Circle, Tag, User, FileText, Clock,
-  TrendingUp, ChevronRight, Edit3, LayoutGrid,
+  TrendingUp, ChevronRight, Edit3, LayoutGrid, Pencil, Trash2, X, Check,
 } from 'lucide-react';
 
 const STATUS_CONFIG = {
@@ -23,13 +23,17 @@ export default function ProjectDetailPage() {
   const navigate = useNavigate();
   const [showMilestoneForm, setShowMilestoneForm] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingMilestone, setEditingMilestone] = useState(null);
 
   const { data: project,       isLoading: pLoading }  = useProject(id);
   const { data: milestones = [], isLoading: mLoading } = useMilestones(id);
   const { data: tasks = [] }                           = useProjectTasks(id);
-  const addMilestone = useAddMilestone(id);
+  const addMilestone    = useAddMilestone(id);
+  const updateMilestone = useUpdateMilestone(id);
+  const deleteMilestone = useDeleteMilestone(id);
 
   const { register, handleSubmit, reset } = useForm();
+  const { register: regEdit, handleSubmit: handleEditSubmit, reset: resetEdit } = useForm();
 
   const onAddMilestone = async (data) => {
     await addMilestone.mutateAsync({
@@ -40,6 +44,28 @@ export default function ProjectDetailPage() {
     });
     reset();
     setShowMilestoneForm(false);
+  };
+
+  const startEditMilestone = (m) => {
+    setEditingMilestone(m.id);
+    resetEdit({
+      title:   m.title,
+      dueDate: m.dueDate ? new Date(m.dueDate).toISOString().split('T')[0] : '',
+    });
+  };
+
+  const onEditMilestone = async (data) => {
+    await updateMilestone.mutateAsync({
+      id: editingMilestone,
+      data: { title: data.title, dueDate: data.dueDate || null },
+    });
+    setEditingMilestone(null);
+  };
+
+  const onDeleteMilestone = (milestoneId) => {
+    if (window.confirm('Bu kilometre taşını ve içindeki tüm görevleri silmek istediğinizden emin misiniz?')) {
+      deleteMilestone.mutate(milestoneId);
+    }
   };
 
   if (pLoading) return (
@@ -204,31 +230,76 @@ export default function ProjectDetailPage() {
             <ul className="space-y-2.5">
               {milestones.map((m) => {
                 const isDone = m.totalTasks > 0 && m.completedTasks === m.totalTasks;
+                const isEditing = editingMilestone === m.id;
                 return (
                   <li key={m.id}
                     className={`p-4 rounded-xl border transition-all ${isDone ? 'border-emerald-100 bg-emerald-50/60' : 'border-slate-100 bg-slate-50/50'}`}>
-                    <div className="flex items-center gap-3 mb-2">
-                      {isDone
-                        ? <CheckCircle2 size={17} className="text-emerald-500 flex-shrink-0" />
-                        : <Circle size={17} className="text-slate-300 flex-shrink-0" />}
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-semibold truncate ${isDone ? 'line-through text-slate-400' : 'text-slate-800'}`}>{m.title}</p>
-                        {m.dueDate && <p className="text-xs text-slate-400">{new Date(m.dueDate).toLocaleDateString('tr-TR')}</p>}
-                      </div>
-                      <span className="text-xs font-medium text-slate-500 shrink-0 whitespace-nowrap">
-                        {m.totalTasks === 0 ? 'Görev yok' : `${m.completedTasks}/${m.totalTasks}`}
-                      </span>
-                    </div>
-                    {m.totalTasks > 0 && (
-                      <div className="ml-8">
-                        <div className="flex justify-between text-xs text-slate-400 mb-1">
-                          <span>İlerleme</span><span>{m.progressPercentage}%</span>
+                    {isEditing ? (
+                      <form onSubmit={handleEditSubmit(onEditMilestone)} className="space-y-2">
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            {...regEdit('title', { required: true })}
+                            placeholder="Başlık *"
+                            className="col-span-2 sm:col-span-1 border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                          />
+                          <input
+                            {...regEdit('dueDate')}
+                            type="date"
+                            className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                          />
                         </div>
-                        <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                          <div className={`h-full rounded-full transition-all duration-500 ${isDone ? 'bg-emerald-500' : 'bg-brand-500'}`}
-                            style={{ width: `${m.progressPercentage}%` }} />
+                        <div className="flex gap-2">
+                          <button type="submit" disabled={updateMilestone.isPending}
+                            className="flex items-center gap-1 bg-brand-500 hover:bg-brand-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition disabled:opacity-50">
+                            <Check size={12} /> Kaydet
+                          </button>
+                          <button type="button" onClick={() => setEditingMilestone(null)}
+                            className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition">
+                            <X size={12} /> İptal
+                          </button>
                         </div>
-                      </div>
+                      </form>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-3 mb-2">
+                          {isDone
+                            ? <CheckCircle2 size={17} className="text-emerald-500 flex-shrink-0" />
+                            : <Circle size={17} className="text-slate-300 flex-shrink-0" />}
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-semibold truncate ${isDone ? 'line-through text-slate-400' : 'text-slate-800'}`}>{m.title}</p>
+                            {m.dueDate && <p className="text-xs text-slate-400">{new Date(m.dueDate).toLocaleDateString('tr-TR')}</p>}
+                          </div>
+                          <span className="text-xs font-medium text-slate-500 shrink-0 whitespace-nowrap mr-2">
+                            {m.totalTasks === 0 ? 'Görev yok' : `${m.completedTasks}/${m.totalTasks}`}
+                          </span>
+                          <button
+                            onClick={() => startEditMilestone(m)}
+                            className="p-1 text-slate-400 hover:text-brand-500 hover:bg-brand-50 rounded-lg transition"
+                            title="Düzenle"
+                          >
+                            <Pencil size={13} />
+                          </button>
+                          <button
+                            onClick={() => onDeleteMilestone(m.id)}
+                            disabled={deleteMilestone.isPending}
+                            className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition disabled:opacity-50"
+                            title="Sil"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                        {m.totalTasks > 0 && (
+                          <div className="ml-8">
+                            <div className="flex justify-between text-xs text-slate-400 mb-1">
+                              <span>İlerleme</span><span>{m.progressPercentage}%</span>
+                            </div>
+                            <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                              <div className={`h-full rounded-full transition-all duration-500 ${isDone ? 'bg-emerald-500' : 'bg-brand-500'}`}
+                                style={{ width: `${m.progressPercentage}%` }} />
+                            </div>
+                          </div>
+                        )}
+                      </>
                     )}
                   </li>
                 );

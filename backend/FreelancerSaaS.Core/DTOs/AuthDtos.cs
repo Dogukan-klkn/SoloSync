@@ -49,4 +49,24 @@ namespace FreelancerSaaS.Core.DTOs
         public string Email              { get; set; } = string.Empty;
         public string? ProfilePictureUrl { get; set; }
     }
+
+    public class VerifyInvitationCodeRequest
+    {
+        public string Email { get; set; } = string.Empty;
+        public string Code  { get; set; } = string.Empty;
+    }
+
+    public class CompleteClientSetupRequest
+    {
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName  { get; set; } = string.Empty;
+        public string Password  { get; set; } = string.Empty;
+    }
+
+    public class VerifyInvitationCodeResponse
+    {
+        public string SetupToken { get; set; } = string.Empty;
+        public string Email      { get; set; } = string.Empty;
+        public string CompanyName { get; set; } = string.Empty;
+    }
 }

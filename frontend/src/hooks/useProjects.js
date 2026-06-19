@@ -62,6 +62,28 @@ export function useAddMilestone(projectId) {
   });
 }
 
+export function useUpdateMilestone(projectId) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }) => projectService.updateMilestone(id, data).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['milestones', projectId] });
+      qc.invalidateQueries({ queryKey: PROJECTS_KEY });
+    },
+  });
+}
+
+export function useDeleteMilestone(projectId) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => projectService.deleteMilestone(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['milestones', projectId] });
+      qc.invalidateQueries({ queryKey: PROJECTS_KEY });
+    },
+  });
+}
+
 export function useAllProjectTasks() {
   return useQuery({
     queryKey: ['dashboard-tasks'],

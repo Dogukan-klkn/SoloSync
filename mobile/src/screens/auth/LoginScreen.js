@@ -103,10 +103,23 @@ const LoginScreen = ({ navigation, onLogin }) => {
             <Text style={styles.buttonText}>{loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+          <TouchableOpacity onPress={() => navigation.navigate('Register')} style={{ marginBottom: 4 }}>
             <Text style={styles.linkText}>
               Hesabınız yok mu? <Text style={styles.link}>Kayıt Ol</Text>
             </Text>
+          </TouchableOpacity>
+
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>veya</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <TouchableOpacity
+            style={styles.clientBtn}
+            onPress={() => navigation.navigate('ClientSetup')}
+          >
+            <Text style={styles.clientBtnText}>🏢 Davetiye Kodum Var (Müşteri)</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -142,6 +155,15 @@ const styles = StyleSheet.create({
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   linkText: { textAlign: 'center', color: '#94a3b8', fontSize: 14 },
   link: { color: '#38bdf8', fontWeight: '600' },
+  divider: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 16 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.12)' },
+  dividerText: { color: '#64748b', fontSize: 12 },
+  clientBtn: {
+    borderWidth: 1, borderColor: 'rgba(124,58,237,0.5)',
+    borderRadius: 12, paddingVertical: 14, alignItems: 'center',
+    backgroundColor: 'rgba(124,58,237,0.1)',
+  },
+  clientBtnText: { color: '#a78bfa', fontWeight: '600', fontSize: 14 },
 });
 
 export default LoginScreen;

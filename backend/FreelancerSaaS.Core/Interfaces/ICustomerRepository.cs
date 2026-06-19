@@ -4,8 +4,10 @@ namespace FreelancerSaaS.Core.Interfaces
 {
     public interface ICustomerRepository : IGenericRepository<Customer>
     {
-        Task<IEnumerable<Customer>> GetByUserIdAsync(Guid userId);
+        Task<IEnumerable<Customer>> GetByFreelancerIdAsync(Guid freelancerId);
         Task<Customer?> GetByIdWithProjectsAsync(Guid id);
+        Task<Customer?> GetByEmailAsync(string email);
+        Task<bool> IsLinkedToFreelancerAsync(Guid customerId, Guid freelancerId);
     }
 
     public interface IProjectRepository : IGenericRepository<Project>

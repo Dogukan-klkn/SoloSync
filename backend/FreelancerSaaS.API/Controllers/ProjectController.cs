@@ -77,6 +77,24 @@ namespace FreelancerSaaS.API.Controllers
             return Ok(result);
         }
 
+        // PUT api/projects/milestones/{milestoneId}
+        [HttpPut("milestones/{milestoneId:guid}")]
+        [Authorize(Policy = "FreelancerOnly")]
+        public async Task<IActionResult> UpdateMilestone(Guid milestoneId, [FromBody] UpdateMilestoneRequest request)
+        {
+            var result = await _service.UpdateMilestoneAsync(milestoneId, request, GetUserId());
+            return Ok(result);
+        }
+
+        // DELETE api/projects/milestones/{milestoneId}
+        [HttpDelete("milestones/{milestoneId:guid}")]
+        [Authorize(Policy = "FreelancerOnly")]
+        public async Task<IActionResult> DeleteMilestone(Guid milestoneId)
+        {
+            await _service.DeleteMilestoneAsync(milestoneId, GetUserId());
+            return NoContent();
+        }
+
         // GET api/projects/tasks/dashboard — Dashboard Task Board için tüm aktif görevler
         [HttpGet("tasks/dashboard")]
         [Authorize(Policy = "FreelancerOnly")]
